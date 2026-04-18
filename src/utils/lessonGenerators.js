@@ -25,16 +25,7 @@ export const generateLessonPlan = (clientData, ptId) => {
   const totalLessons = parseInt(alinan_ders_sayisi);
   const weeklyDays = haftalik_ders_gunleri;
   
-  // Hafta günleri mapping (Pazartesi = 1, Pazar = 0)
-  const dayMapping = {
-    'Pazartesi': 1,
-    'Salı': 2, 
-    'Çarşamba': 3,
-    'Perşembe': 4,
-    'Cuma': 5,
-    'Cumartesi': 6,
-    'Pazar': 0
-  };
+  // Weekday mapping handled via gunlerMap below; removed unused dayMapping
 
   // Default lesson times for each day
   const defaultTimes = {

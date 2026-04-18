@@ -55,7 +55,7 @@ export const useIntersectionObserver = (options = {}) => {
     return () => {
       observer.disconnect();
     };
-  }, [target, options.threshold, options.root, options.rootMargin]);
+  }, [target, options]);
 
   return [setTarget, isIntersecting];
 };
@@ -69,7 +69,7 @@ export const usePerformanceMonitor = (componentName) => {
     renderCount.current += 1;
     const endTime = performance.now();
     
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log(`🚀 ${componentName} - Render #${renderCount.current}, took ${(endTime - startTime.current).toFixed(2)}ms`);
     }
     

@@ -151,35 +151,35 @@ const PWAInstallPrompt = () => {
   return (
     <>
       {/* Desktop/Tablet Install Banner */}
-      <div className="fixed top-4 right-4 z-50 max-w-sm animate-slide-in-right">
-        <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-4 hover-lift">
-          <div className="flex items-start space-x-3">
+      <div className="fixed top-4 right-4 z-50 max-w-sm animate-slide-in-right hidden sm:block">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-5 hover-lift">
+          <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-600">
                 {getDeviceIcon()}
               </div>
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">
+              <h3 className="text-sm font-black text-slate-900 mb-1">
                 {installText.title}
               </h3>
-              <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+              <p className="text-xs text-slate-500 mb-3 leading-relaxed">
                 {installText.description}
               </p>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={handleInstallClick}
-                  className="inline-flex items-center px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                  className="btn-primary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black"
                 >
-                  <Download className="h-3 w-3 mr-1.5" />
+                  <Download className="h-3 w-3" />
                   Yükle
                 </button>
                 
                 <button
                   onClick={handleDismiss}
-                  className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                  className="btn-ghost inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-black"
                 >
                   Şimdi Değil
                 </button>
@@ -188,9 +188,9 @@ const PWAInstallPrompt = () => {
             
             <button
               onClick={handleDismiss}
-              className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              className="btn-icon flex-shrink-0 w-7 h-7 rounded-lg"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -198,35 +198,35 @@ const PWAInstallPrompt = () => {
 
       {/* Mobile Install Banner */}
       <div className="fixed bottom-4 left-4 right-4 z-50 sm:hidden animate-slide-up">
-        <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-4">
-          <div className="flex items-center space-x-3">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-4">
+          <div className="flex items-center gap-3">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 bg-primary-500/10 rounded-xl flex items-center justify-center text-primary-600">
                 {getDeviceIcon()}
               </div>
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900">
+              <h3 className="text-sm font-black text-slate-900">
                 {installText.title}
               </h3>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-slate-500">
                 Daha iyi deneyim için yükle
               </p>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleInstallClick}
-                className="inline-flex items-center px-3 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                className="btn-primary inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-black"
               >
-                <Download className="h-4 w-4 mr-1" />
+                <Download className="h-4 w-4" />
                 Yükle
               </button>
               
               <button
                 onClick={handleDismiss}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                className="btn-icon"
               >
                 <X className="h-4 w-4" />
               </button>

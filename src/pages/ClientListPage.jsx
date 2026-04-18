@@ -1,39 +1,40 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Search, Plus, UserPlus, Filter, TrendingUp, BarChart3 } from 'lucide-react';
+import { Users, Search, UserPlus, Filter, TrendingUp, BarChart3, Star, Target, CheckCircle } from 'lucide-react';
 import { getFromLocalStorage } from '../utils/helpers';
 import { useToast } from '../utils/ToastContext';
 import { useDebounce, usePerformanceMonitor } from '../hooks/usePerformance';
 import ClientCard from '../components/client/ClientCard';
 import { ClientListSkeleton } from '../components/client/ClientSkeletons';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import { deleteClientFromApi } from '../utils/api';
 
-// Memoized Search Input Component
+// Memoized Premium Search Input
 const SearchInput = memo(({ value, onChange, placeholder, disabled }) => (
-  <div className="relative">
-    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+  <div className="relative group">
+    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
     <input
       type="text"
       placeholder={placeholder}
       value={value}
       onChange={onChange}
       disabled={disabled}
-      className="input-field pl-10 transition-all duration-200"
+      className="input-premium pl-12"
     />
   </div>
 ));
 
 SearchInput.displayName = 'SearchInput';
 
-// Memoized Filter Select Component
+// Memoized Premium Filter Select
 const FilterSelect = memo(({ value, onChange, options, disabled }) => (
-  <div className="relative">
-    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+  <div className="relative group">
+    <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
     <select
       value={value}
       onChange={onChange}
       disabled={disabled}
-      className="input-field pl-10 appearance-none transition-all duration-200"
+      className="input-premium pl-12 appearance-none cursor-pointer"
     >
       {options.map(option => (
         <option key={option.value} value={option.value}>
@@ -46,119 +47,11 @@ const FilterSelect = memo(({ value, onChange, options, disabled }) => (
 
 FilterSelect.displayName = 'FilterSelect';
 
-// Memoized Stats Component
-const ClientStats = memo(({ 
-  totalClients, 
-  activeClients, 
-  completedClients,
-  filteredCount,
-  isFiltered 
-}) => (
-  <div className="space-y-3">
-    {/* Desktop: Tek satır */}
-    <div className="hidden md:flex items-center space-x-6 text-sm text-gray-600">
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 bg-blue-100 rounded-full border border-blue-300"></div>
-        <span>Toplam: <span className="font-medium text-gray-900">{totalClients}</span></span>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 bg-green-100 rounded-full border border-green-300"></div>
-        <span>Aktif: <span className="font-medium text-green-700">{activeClients}</span></span>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 bg-red-100 rounded-full border border-red-300"></div>
-        <span>Tamamlanan: <span className="font-medium text-red-700">{completedClients}</span></span>
-      </div>
-      {isFiltered && (
-        <div className="flex items-center space-x-2 text-primary-600">
-          <TrendingUp className="h-4 w-4" />
-          <span>Görüntülenen: <span className="font-medium">{filteredCount}</span></span>
-        </div>
-      )}
-    </div>
-
-    {/* Mobile: İki satır */}
-    <div className="md:hidden space-y-2">
-      <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-blue-100 rounded-full border border-blue-300"></div>
-            <span className="text-gray-600">Toplam: <span className="font-medium text-gray-900">{totalClients}</span></span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2.5 h-2.5 bg-green-100 rounded-full border border-green-300"></div>
-            <span className="text-gray-600">Aktif: <span className="font-medium text-green-700">{activeClients}</span></span>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center space-x-1">
-          <div className="w-2.5 h-2.5 bg-red-100 rounded-full border border-red-300"></div>
-          <span className="text-gray-600">Tamamlanan: <span className="font-medium text-red-700">{completedClients}</span></span>
-        </div>
-        {isFiltered && (
-          <div className="flex items-center space-x-1 text-primary-600">
-            <TrendingUp className="h-3 w-3" />
-            <span className="text-xs">Gösterilen: <span className="font-medium">{filteredCount}</span></span>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-));
-
-ClientStats.displayName = 'ClientStats';
-
-// Memoized Empty State Component
-const EmptyState = memo(({ 
-  hasClients, 
-  isFiltered, 
-  searchTerm, 
-  statusFilter 
-}) => {
-  if (!hasClients) {
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-        <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Henüz müşteri eklenmemiş</h3>
-        <p className="text-gray-500 mb-6">İlk müşterinizi ekleyerek başlayın.</p>
-        <Link
-          to="/clients/new"
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors duration-200"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          İlk Müşteriyi Ekle
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-      <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-      <h3 className="text-lg font-medium text-gray-900 mb-2">Sonuç bulunamadı</h3>
-      <p className="text-gray-500 mb-4">
-        {searchTerm ? `"${searchTerm}" araması` : 'Seçilen filtreler'} için müşteri bulunmuyor.
-      </p>
-      <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-        <span>Arama: "{searchTerm || 'Yok'}"</span>
-        <span>•</span>
-        <span>Durum: {statusFilter === 'all' ? 'Tümü' : statusFilter === 'active' ? 'Aktif' : 'Tamamlanan'}</span>
-      </div>
-    </div>
-  );
-});
-
-EmptyState.displayName = 'EmptyState';
-
-// Main Component
+// Main Page Component
 const ClientListPage = () => {
   const { toast } = useToast();
+  usePerformanceMonitor('ClientListPage');
   
-  // Performance monitoring
-  const renderCount = usePerformanceMonitor('ClientListPage');
-  
-  // State
   const [clients, setClients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -167,293 +60,186 @@ const ClientListPage = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   
-  // Debounced search for performance
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   
-  // Load clients
   useEffect(() => {
     const loadClients = async () => {
       try {
         setLoading(true);
-        // Simulate API delay in development
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
-        
         const savedClients = getFromLocalStorage('musteriler', []);
         setClients(savedClients);
       } catch (error) {
-        console.error('Error loading clients:', error);
         toast.error('Müşteri verileri yüklenirken hata oluştu');
       } finally {
         setLoading(false);
       }
     };
-
     loadClients();
   }, [toast]);
 
-  // Memoized client statistics
-  const clientStats = useMemo(() => {
+  const stats = useMemo(() => {
     const now = new Date();
-    const active = clients.filter(client => {
-      if (!client.tahmini_bitis_tarihi) return true;
-      return new Date(client.tahmini_bitis_tarihi) > now;
-    });
-    const completed = clients.filter(client => {
-      if (!client.tahmini_bitis_tarihi) return false;
-      return new Date(client.tahmini_bitis_tarihi) <= now;
-    });
-
+    const active = clients.filter(c => !c.tahmini_bitis_tarihi || new Date(c.tahmini_bitis_tarihi) > now).length;
     return {
       total: clients.length,
-      active: active.length,
-      completed: completed.length
+      active,
+      completed: clients.length - active
     };
   }, [clients]);
 
-  // Memoized filtered clients with performance optimization
   const filteredClients = useMemo(() => {
-    if (!clients.length) return [];
-
     let filtered = clients;
-
-    // Search filter
     if (debouncedSearchTerm.trim()) {
-      const searchLower = debouncedSearchTerm.toLowerCase().trim();
-      filtered = filtered.filter(client => {
-        const fullName = `${client.ad} ${client.soyad}`.toLowerCase();
-        const firstName = client.ad.toLowerCase();
-        const lastName = client.soyad.toLowerCase();
-        
-        return fullName.includes(searchLower) ||
-               firstName.includes(searchLower) ||
-               lastName.includes(searchLower);
-      });
+      const s = debouncedSearchTerm.toLowerCase().trim();
+      filtered = filtered.filter(c => `${c.ad} ${c.soyad}`.toLowerCase().includes(s));
     }
-
-    // Status filter
     if (statusFilter !== 'all') {
       const now = new Date();
-      filtered = filtered.filter(client => {
-        if (!client.tahmini_bitis_tarihi) return statusFilter === 'active';
-        const endDate = new Date(client.tahmini_bitis_tarihi);
-        
-        return statusFilter === 'active' ? endDate > now : endDate <= now;
+      filtered = filtered.filter(c => {
+        const isAct = !c.tahmini_bitis_tarihi || new Date(c.tahmini_bitis_tarihi) > now;
+        return statusFilter === 'active' ? isAct : !isAct;
       });
     }
-
     return filtered;
   }, [clients, debouncedSearchTerm, statusFilter]);
 
-  // Optimized handlers
-  const handleSearchChange = useCallback((e) => {
-    setSearchTerm(e.target.value);
-  }, []);
-
-  const handleStatusFilterChange = useCallback((e) => {
-    setStatusFilter(e.target.value);
-  }, []);
-
-  const handleDeleteClick = useCallback((client) => {
-    setSelectedClient(client);
-    setShowDeleteModal(true);
-  }, []);
-
   const handleDeleteConfirm = useCallback(async () => {
     if (!selectedClient) return;
-    
     setDeleteLoading(true);
-    
     try {
-      // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 800));
+      const newList = clients.filter(c => c.id !== selectedClient.id);
+      setClients(newList);
+      localStorage.setItem('musteriler', JSON.stringify(newList));
+      await deleteClientFromApi(selectedClient.id);
       
-      const newClientList = clients.filter(c => c.id !== selectedClient.id);
-      setClients(newClientList);
-      localStorage.setItem('musteriler', JSON.stringify(newClientList));
-      
-      toast.success(`${selectedClient.ad} ${selectedClient.soyad} adlı müşteri başarıyla silindi.`, {
-        title: 'Müşteri Silindi!',
-        duration: 4000
-      });
-      
+      toast.success(`${selectedClient.ad} ${selectedClient.soyad} silindi.`);
       setShowDeleteModal(false);
-      setSelectedClient(null);
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Müşteri silinirken beklenmeyen bir hata oluştu.', {
-        title: 'Silme Hatası!',
-        duration: 5000
-      });
     } finally {
       setDeleteLoading(false);
     }
   }, [selectedClient, clients, toast]);
 
-  const handleDeleteCancel = useCallback(() => {
-    setShowDeleteModal(false);
-    setSelectedClient(null);
-  }, []);
-
-  // Filter options
-  const filterOptions = useMemo(() => [
-    { value: 'all', label: 'Tüm Müşteriler' },
-    { value: 'active', label: 'Aktif Müşteriler' },
-    { value: 'completed', label: 'Tamamlanan Müşteriler' }
-  ], []);
-
-  const isFiltered = debouncedSearchTerm.trim() !== '' || statusFilter !== 'all';
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header Skeleton */}
-        <div className="animate-pulse">
-          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-            <div className="flex items-center space-x-3">
-              <div className="h-8 w-8 bg-gray-200 rounded"></div>
-              <div>
-                <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-64"></div>
-              </div>
-            </div>
-            <div className="h-10 bg-gray-200 rounded w-40"></div>
-          </div>
-        </div>
-
-        {/* Filters Skeleton */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="h-10 bg-gray-200 rounded"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
-            <div className="h-6 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-
-        {/* Client List Skeleton */}
-        <ClientListSkeleton count={6} />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-primary-100 rounded-lg">
-            <Users className="h-6 w-6 text-primary-600" />
+    <div className="max-w-7xl mx-auto space-y-12 animate-fade-in p-4 lg:p-0 mb-20 md:mb-0">
+      
+      {/* 👑 Header Block */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-4">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-500 text-[10px] font-black uppercase tracking-widest">
+            <Users className="h-3 w-3" />
+            <span>Müşteri Portföyü</span>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Müşteri Listesi</h1>
-            <p className="text-sm sm:text-base text-gray-600">
-              Toplam {clientStats.total} müşteri • {filteredClients.length} görüntüleniyor
-            </p>
-          </div>
+          <h1 className="text-4xl lg:text-5xl font-black text-main tracking-tight">
+            Müşteri <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-indigo-500">Yönetimi</span>
+          </h1>
+          <p className="text-slate-500 font-medium max-w-lg leading-relaxed">
+            Tüm kursiyerlerinin ilerlemesini takip et, programlarını yönet ve performanslarını zirveye taşı.
+          </p>
         </div>
         
         <Link
           to="/clients/new"
-          className="inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors duration-200 flex-shrink-0 btn-mobile"
+          className="btn-primary btn-magnetic btn-dark-bg inline-flex items-center justify-center gap-3 px-8 py-4 rounded-[1.5rem] font-black text-sm shadow-lg hover:scale-[1.02] hover:shadow-primary-500/25"
         >
-          <UserPlus className="h-4 w-4 mr-2" />
-          <span className="whitespace-nowrap">Yeni Müşteri Ekle</span>
+          <UserPlus className="h-5 w-5 text-indigo-200 group-hover:scale-110 transition-transform" />
+          <span>Yeni Kayıt</span>
         </Link>
       </div>
 
-      {/* Filters and Search */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 card-animate">
-        <div className="space-y-6">
-          {/* Search and Filter Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Search */}
-            <SearchInput
-              value={searchTerm}
-              onChange={handleSearchChange}
-              placeholder="Müşteri ara..."
-              disabled={loading}
-            />
-
-            {/* Status Filter */}
-            <FilterSelect
-              value={statusFilter}
-              onChange={handleStatusFilterChange}
-              options={filterOptions}
-              disabled={loading}
-            />
-          </div>
-
-          {/* Statistics Row */}
-          <div className="border-t border-gray-200 pt-4">
-            <ClientStats
-              totalClients={clientStats.total}
-              activeClients={clientStats.active}
-              completedClients={clientStats.completed}
-              filteredCount={filteredClients.length}
-              isFiltered={isFiltered}
-            />
-          </div>
-        </div>
-
-        {/* Performance Info (Development Only) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center space-x-4 text-sm text-blue-700">
-              <div className="flex items-center space-x-1">
-                <BarChart3 className="h-4 w-4" />
-                <span>Render #{renderCount}</span>
-              </div>
-              <span>•</span>
-              <span>Search debounce: {debouncedSearchTerm !== searchTerm ? 'Active' : 'Idle'}</span>
-              <span>•</span>
-              <span>Filtered: {filteredClients.length}/{clients.length}</span>
+      {/* 🔍 Elite Filters Bento */}
+      <div className="glass-card rounded-[3rem] overflow-hidden p-8 lg:p-10 border-none shadow-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          
+          <div className="lg:col-span-8 space-y-8">
+            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center">
+              <Star className="h-4 w-4 mr-2 text-primary-500" />
+              Arama ve Filtreleme
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <SearchInput
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="İsim veya soyisim ile ara..."
+              />
+              <FilterSelect
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                options={[
+                  { value: 'all', label: 'Tüm Durumlar' },
+                  { value: 'active', label: 'Aktif Üyeler' },
+                  { value: 'completed', label: 'Biten Programlar' }
+                ]}
+              />
             </div>
           </div>
-        )}
+
+          <div className="lg:col-span-4 bg-slate-50 rounded-[2rem] p-8 border border-slate-100 flex flex-col justify-between">
+            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">Portföy Durumu</h2>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-600">Toplam Kursiyer</span>
+                <span className="text-xl font-black text-main">{stats.total}</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div 
+                  className="h-full bg-primary-500 rounded-full shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]" 
+                  style={{ width: `${stats.total > 0 ? (stats.active / stats.total) * 100 : 0}%` }} 
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider">
+                <div className="flex items-center text-emerald-600">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2 shadow-lg shadow-emerald-500/20" />
+                  {stats.active} AKTİF
+                </div>
+                <div className="flex items-center text-slate-500 border-l border-slate-200 hide-scrollbar pl-4">
+                  <div className="w-2 h-2 rounded-full bg-slate-300 mr-2" />
+                  {stats.completed} BİTEN
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
-      {/* Client List */}
+      {/* 👥 Client Grid */}
       {filteredClients.length === 0 ? (
-        <EmptyState
-          hasClients={clients.length > 0}
-          isFiltered={isFiltered}
-          searchTerm={debouncedSearchTerm}
-          statusFilter={statusFilter}
-        />
+        <div className="glass-card rounded-[3rem] p-20 text-center border-none shadow-2xl">
+          <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-slate-100">
+            <Search className="h-10 w-10 text-slate-400" />
+          </div>
+          <h3 className="text-2xl font-black text-main mb-2 tracking-tight">Sonuç Bulunamadı</h3>
+          <p className="text-slate-600 font-medium">Arama kriterlerinize uygun kursiyer bulunmuyor.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredClients.map((client, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12">
+          {filteredClients.map((client, i) => (
             <ClientCard
               key={client.id}
               client={client}
-              onDeleteClick={handleDeleteClick}
-              className={`animate-slide-up animate-stagger-${Math.min(index % 4 + 1, 4)}`}
+              onDeleteClick={(c) => { setSelectedClient(c); setShowDeleteModal(true); }}
+              className={`animate-slide-up animate-stagger-${Math.min(i % 4 + 1, 4)}`}
             />
           ))}
         </div>
       )}
 
-      {/* Performance tip for large lists */}
-      {filteredClients.length > 50 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <TrendingUp className="h-5 w-5 text-amber-600 mt-0.5 mr-3" />
-            <div>
-              <h4 className="text-sm font-medium text-amber-800">Performance Tip</h4>
-              <p className="text-sm text-amber-700 mt-1">
-                {filteredClients.length} müşteri görüntüleniyor. Daha iyi performans için arama veya filtreleri kullanın.
-              </p>
-            </div>
-          </div>
+      {/* 💎 Footer Stat (Development) */}
+      {import.meta.env.DEV && (
+        <div className="fixed bottom-6 right-6 z-40 glass-card !bg-slate-950 !border-slate-800 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl animate-pulse flex items-center space-x-2">
+          <span className="opacity-50">SYS OPTIMIZED</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <span className="text-primary-400">RENDER OK</span>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={showDeleteModal}
-        onClose={handleDeleteCancel}
+        onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteConfirm}
         customerName={selectedClient ? `${selectedClient.ad} ${selectedClient.soyad}` : ''}
         loading={deleteLoading}

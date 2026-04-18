@@ -47,18 +47,7 @@ const Step1TemelBilgiler = memo(({ formData, updateFormData, errors, setErrors }
     }
   };
 
-  const handleFieldUpdate = (field, value) => {
-    updateFormData({ [field]: value });
-    
-    // Error'ı temizle
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
+  // `handleFieldUpdate` removed: `handleInputChange` covers the same use-case
 
   const handleGunSecimi = (gunler) => {
     updateFormData({ haftalik_ders_gunleri: gunler });

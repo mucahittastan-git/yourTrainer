@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Home
 } from 'lucide-react';
-import { getLessonsByPT, getLessonsByDateRange } from '../../utils/lessonHelpers';
+import { getLessonsByDateRange } from '../../utils/lessonHelpers';
 import { LESSON_STATUS, lessonStatusDisplay } from '../../data/lessonsData';
 
 // Date utilities
@@ -21,9 +21,7 @@ const isToday = (date) => {
   const today = new Date();
   return date.toDateString() === today.toDateString();
 };
-const isSameMonth = (date1, date2) => {
-  return date1.getMonth() === date2.getMonth() && date1.getFullYear() === date2.getFullYear();
-};
+// removed unused isSameMonth helper (kept calendar logic simpler)
 
 // Status icon mapping
 const StatusIcon = memo(({ status, size = 'w-3 h-3' }) => {
@@ -74,7 +72,7 @@ const LessonIndicator = memo(({ lessons, isCompact = false }) => {
   // Desktop: Show individual status dots
   return (
     <div className="flex flex-wrap gap-1 justify-center">
-      {lessons.slice(0, 3).map((lesson, index) => {
+      {lessons.slice(0, 3).map((lesson) => {
         const statusConfig = lessonStatusDisplay[lesson.durum];
         return (
           <div

@@ -173,14 +173,7 @@ const Step2VucutOlculeri = memo(({ formData, updateFormData, errors }) => {
     });
   };
 
-  const handleMeasurementChange = (field, value) => {
-    updateFormData({
-      vucut_olculeri: {
-        ...measurements,
-        [field]: value
-      }
-    });
-  };
+  // `handleMeasurementChange` removed — use `handleOlcuChange` which handles the same case
 
   const bmi = useMemo(() => {
     const height = parseFloat(measurements.boy);

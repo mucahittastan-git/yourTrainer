@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { User, Calendar, DollarSign, Activity, Scale, Ruler, Edit, ArrowLeft, Trash2, Clock, Users, FileText, Phone, Mail } from 'lucide-react';
+import { User, Calendar, DollarSign, Activity, Scale, Ruler, Edit, ArrowLeft, Trash2, Clock, Users, FileText } from 'lucide-react';
 import { getFromLocalStorage, formatDate, saveToLocalStorage } from '../utils/helpers';
 import { useToast } from '../utils/ToastContext';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import { syncClientToApi, deleteClientFromApi } from '../utils/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 const ClientDetailPage = () => {
   const { id } = useParams();
@@ -13,13 +15,15 @@ const ClientDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showMeasurementModal, setShowMeasurementModal] = useState(false);
+  const [newMeasurement, setNewMeasurement] = useState({ kilo: '', bel: '', boy: '' });
 
   // Müşteri bilgilerini yükle
   useEffect(() => {
     const loadMusteri = () => {
       try {
         const musteriler = getFromLocalStorage('musteriler', []);
-        const bulunanMusteri = musteriler.find(m => m.id === parseInt(id));
+        const bulunanMusteri = musteriler.find(m => String(m.id) === String(id));
         
         if (bulunanMusteri) {
           setMusteri(bulunanMusteri);
@@ -55,6 +59,7 @@ const ClientDetailPage = () => {
       const musteriler = getFromLocalStorage('musteriler', []);
       const yeniListe = musteriler.filter(m => m.id !== parseInt(id));
       saveToLocalStorage('musteriler', yeniListe);
+      await deleteClientFromApi(id);
       
       toast.success(`${musteri.ad} ${musteri.soyad} adlı müşteri başarıyla silindi.`, {
         title: 'Müşteri Silindi!',
@@ -76,6 +81,65 @@ const ClientDetailPage = () => {
 
   const handleDeleteCancel = () => {
     setShowDeleteModal(false);
+  };
+
+  const handleCheckIn = async () => {
+    try {
+      const musteriler = getFromLocalStorage('musteriler', []);
+      const index = musteriler.findIndex(m => String(m.id) === String(id));
+      if (index === -1) return;
+
+      const updatedMusteri = { ...musteriler[index] };
+      const bugun = new Date().toISOString();
+      
+      updatedMusteri.yoklama_gecmisi = [...(updatedMusteri.yoklama_gecmisi || []), bugun];
+      updatedMusteri.alinan_ders_sayisi = (parseInt(updatedMusteri.alinan_ders_sayisi) || 0) + 1;
+      
+      musteriler[index] = updatedMusteri;
+      saveToLocalStorage('musteriler', musteriler);
+      setMusteri(updatedMusteri);
+      
+      await syncClientToApi(updatedMusteri, 'PUT');
+      toast.success('Yoklama başarıyla alındı ve ders işlendi.', { title: 'Harika!' });
+    } catch (err) {
+      toast.error('Yoklama alınırken hata oluştu.');
+    }
+  };
+
+  const handleSaveMeasurement = async () => {
+    if (!newMeasurement.kilo) {
+      toast.error('Lütfen en azından kilo bilgisini giriniz.');
+      return;
+    }
+    
+    try {
+      const musteriler = getFromLocalStorage('musteriler', []);
+      const index = musteriler.findIndex(m => String(m.id) === String(id));
+      
+      const updatedMusteri = { ...musteriler[index] };
+      const bugun = new Date().toISOString().split('T')[0];
+      
+      const olcum = {
+        tarih: bugun,
+        kilo: newMeasurement.kilo,
+        bel: newMeasurement.bel || (updatedMusteri.vucut_olculeri?.bel || ''),
+        boy: newMeasurement.boy || (updatedMusteri.vucut_olculeri?.boy || '')
+      };
+      
+      updatedMusteri.vucut_olculeri = { ...updatedMusteri.vucut_olculeri, ...olcum };
+      updatedMusteri.olcum_gecmisi = [...(updatedMusteri.olcum_gecmisi || []), olcum];
+      
+      musteriler[index] = updatedMusteri;
+      saveToLocalStorage('musteriler', musteriler);
+      setMusteri(updatedMusteri);
+      
+      await syncClientToApi(updatedMusteri, 'PUT');
+      toast.success('Yeni ölçüm başarıyla kaydedildi.');
+      setShowMeasurementModal(false);
+      setNewMeasurement({ kilo: '', bel: '', boy: '' });
+    } catch (err) {
+      toast.error('Ölçüm kaydedilirken hata oluştu.');
+    }
   };
 
   // Durum badge'i
@@ -140,14 +204,14 @@ const ClientDetailPage = () => {
     return (
       <div className="max-w-6xl mx-auto">
         <div className="text-center py-12">
-          <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Müşteri Bulunamadı</h2>
-          <p className="text-gray-600 mb-6">Aradığınız müşteri mevcut değil veya silinmiş olabilir.</p>
+          <User className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Müşteri Bulunamadı</h2>
+          <p className="text-slate-600 mb-6">Aradığınız müşteri mevcut değil veya silinmiş olabilir.</p>
           <Link
             to="/clients/list"
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+            className="btn-secondary inline-flex items-center gap-2 rounded-xl"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4" />
             Müşteri Listesine Dön
           </Link>
         </div>
@@ -190,21 +254,28 @@ const ClientDetailPage = () => {
             </span>
           </div>
           
-          {/* Action Buttons */}
+        {/* Action Buttons */}
           <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-3">
+            <button
+              onClick={handleCheckIn}
+              className="bg-green-100 hover:bg-green-200 text-green-700 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-colors"
+            >
+              <Activity className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">Derse Katıldı</span>
+            </button>
             <Link
               to={`/clients/${id}/edit`}
-              className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 min-w-0"
+              className="btn-secondary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black"
             >
-              <Edit className="h-4 w-4 mr-2 flex-shrink-0" />
+              <Edit className="h-4 w-4 flex-shrink-0" />
               <span className="truncate">Düzenle</span>
             </Link>
             
             <button
               onClick={handleDeleteClick}
-              className="inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200 min-w-0"
+              className="btn-danger inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black"
             >
-              <Trash2 className="h-4 w-4 mr-2 flex-shrink-0" />
+              <Trash2 className="h-4 w-4 flex-shrink-0" />
               <span className="truncate">Sil</span>
             </button>
           </div>
@@ -222,6 +293,10 @@ const ClientDetailPage = () => {
               </div>
               <h2 className="text-xl font-bold text-white">{musteri.ad} {musteri.soyad}</h2>
               <p className="text-primary-100">{musteri.yas} yaşında</p>
+              <div className="mt-3 inline-flex items-center space-x-2 bg-white/20 px-3 py-1 rounded-xl">
+                <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">ÜYE KODU</span>
+                <span className="text-sm font-black text-white user-select-all">{musteri.id}</span>
+              </div>
             </div>
             
             <div className="p-6 space-y-4">
@@ -337,12 +412,40 @@ const ClientDetailPage = () => {
             </div>
           </div>
 
-          {/* Vücut Ölçüleri */}
-          {musteri.vucut_olculeri && Object.values(musteri.vucut_olculeri).some(value => value) && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Vücut Ölçüleri</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Vücut Ölçüleri ve Grafik */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Gelişim ve Ölçüm Grafiği</h3>
+              <button
+                onClick={() => setShowMeasurementModal(true)}
+                className="btn-primary py-1.5 px-4 text-xs"
+              >
+                + Yeni Ölçüm
+              </button>
+            </div>
+            
+            {musteri.olcum_gecmisi && musteri.olcum_gecmisi.length > 0 ? (
+              <div className="h-64 mt-4 mb-8">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={musteri.olcum_gecmisi}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                    <XAxis dataKey="tahmini_tarih" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} />
+                    <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} />
+                    <RechartsTooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Line type="monotone" dataKey="kilo" stroke="#4F46E5" strokeWidth={3} dot={{r: 4, fill: '#4F46E5', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 6}} name="Kilo (kg)" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-8 text-center mb-6">
+                <Activity className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-sm text-slate-500">Henüz ölçüm geçmişi bulunmuyor. Yeni ölçüm ekleyerek grafiği oluşturabilirsiniz.</p>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {musteri.vucut_olculeri.boy && (
                   <div className="text-center">
                     <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mx-auto mb-2">
@@ -412,6 +515,51 @@ const ClientDetailPage = () => {
           )}
         </div>
       </div>
+
+      {/* Ölçüm Ekleme Modal */}
+      {showMeasurementModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Yeni Vücut Ölçümü</h3>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Kilo (kg) *</label>
+                <input
+                  type="number"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                  value={newMeasurement.kilo}
+                  onChange={(e) => setNewMeasurement({...newMeasurement, kilo: e.target.value})}
+                  placeholder="Örn: 75.5"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Boy (cm)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                    value={newMeasurement.boy}
+                    onChange={(e) => setNewMeasurement({...newMeasurement, boy: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bel (cm)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                    value={newMeasurement.bel}
+                    onChange={(e) => setNewMeasurement({...newMeasurement, bel: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowMeasurementModal(false)} className="flex-1 btn-secondary py-3">İptal</button>
+              <button onClick={handleSaveMeasurement} className="flex-1 btn-primary py-3">Kaydet</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmModal

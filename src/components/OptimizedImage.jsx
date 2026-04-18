@@ -1,1 +1,119 @@
-import React, { useState, useEffect } from 'react';\n\nconst OptimizedImage = ({ \n  src, \n  alt, \n  className = '', \n  width,\n  height,\n  quality = 80,\n  lazy = true,\n  placeholder = null,\n  onLoad = () => {},\n  onError = () => {},\n  ...props \n}) => {\n  const [imageSrc, setImageSrc] = useState(placeholder);\n  const [imageRef, setImageRef] = useState();\n  const [loaded, setLoaded] = useState(false);\n  const [inView, setInView] = useState(false);\n  const [error, setError] = useState(false);\n\n  // IntersectionObserver for lazy loading\n  useEffect(() => {\n    let observer;\n    \n    if (lazy && imageRef && 'IntersectionObserver' in window) {\n      observer = new IntersectionObserver(\n        (entries) => {\n          entries.forEach((entry) => {\n            if (entry.isIntersecting) {\n              setInView(true);\n              observer.unobserve(imageRef);\n            }\n          });\n        },\n        {\n          rootMargin: '50px'\n        }\n      );\n      \n      observer.observe(imageRef);\n    } else if (!lazy) {\n      setInView(true);\n    }\n\n    return () => {\n      if (observer && observer.unobserve && imageRef) {\n        observer.unobserve(imageRef);\n      }\n    };\n  }, [imageRef, lazy]);\n\n  // Load image when in view\n  useEffect(() => {\n    if (inView && src) {\n      const imageLoader = new Image();\n      \n      imageLoader.onload = () => {\n        setImageSrc(src);\n        setLoaded(true);\n        onLoad();\n      };\n      \n      imageLoader.onerror = () => {\n        setError(true);\n        onError();\n      };\n      \n      imageLoader.src = src;\n    }\n  }, [inView, src, onLoad, onError]);\n\n  // Image optimization for data URLs (base64)\n  const optimizeDataUrl = (dataUrl, targetQuality = quality) => {\n    if (!dataUrl || !dataUrl.startsWith('data:image/')) {\n      return dataUrl;\n    }\n\n    try {\n      const canvas = document.createElement('canvas');\n      const ctx = canvas.getContext('2d');\n      const img = new Image();\n      \n      return new Promise((resolve) => {\n        img.onload = () => {\n          // Set canvas dimensions\n          let { width: imgWidth, height: imgHeight } = img;\n          \n          // Apply width/height constraints if provided\n          if (width && height) {\n            canvas.width = width;\n            canvas.height = height;\n          } else if (width) {\n            canvas.width = width;\n            canvas.height = (imgHeight * width) / imgWidth;\n          } else if (height) {\n            canvas.height = height;\n            canvas.width = (imgWidth * height) / imgHeight;\n          } else {\n            canvas.width = imgWidth;\n            canvas.height = imgHeight;\n          }\n          \n          // Draw and compress\n          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);\n          const optimizedDataUrl = canvas.toDataURL('image/jpeg', targetQuality / 100);\n          resolve(optimizedDataUrl);\n        };\n        \n        img.src = dataUrl;\n      });\n    } catch (error) {\n      console.warn('Image optimization failed:', error);\n      return dataUrl;\n    }\n  };\n\n  // Handle different image states\n  const renderImage = () => {\n    if (error) {\n      return (\n        <div \n          className={`flex items-center justify-center bg-gray-200 text-gray-400 ${className}`}\n          style={{ width, height }}\n          {...props}\n        >\n          <span className=\"text-sm\">Resim yüklenemedi</span>\n        </div>\n      );\n    }\n\n    if (!inView || (!loaded && lazy)) {\n      return (\n        <div \n          ref={setImageRef}\n          className={`bg-gray-200 animate-pulse ${className}`}\n          style={{ width, height }}\n          {...props}\n        >\n          {placeholder && (\n            <img \n              src={placeholder} \n              alt={alt} \n              className={`w-full h-full object-cover transition-opacity duration-300 ${\n                loaded ? 'opacity-0' : 'opacity-100'\n              }`}\n            />\n          )}\n        </div>\n      );\n    }\n\n    return (\n      <img\n        ref={setImageRef}\n        src={imageSrc}\n        alt={alt}\n        className={`transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${className}`}\n        width={width}\n        height={height}\n        loading={lazy ? 'lazy' : 'eager'}\n        {...props}\n      />\n    );\n  };\n\n  return renderImage();\n};\n\nexport default OptimizedImage;
+import React, { useState, useEffect } from 'react';
+
+const OptimizedImage = ({
+  src,
+  alt,
+  className = '',
+  width,
+  height,
+  lazy = true,
+  placeholder = null,
+  onLoad = () => {},
+  onError = () => {},
+  ...props
+}) => {
+  const [imageSrc, setImageSrc] = useState(placeholder);
+  const [imageRef, setImageRef] = useState();
+  const [loaded, setLoaded] = useState(false);
+  const [inView, setInView] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let observer;
+
+    if (lazy && imageRef && typeof window !== 'undefined' && 'IntersectionObserver' in window) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setInView(true);
+              observer.unobserve(imageRef);
+            }
+          });
+        },
+        {
+          rootMargin: '50px'
+        }
+      );
+
+      observer.observe(imageRef);
+    } else if (!lazy) {
+      setInView(true);
+    }
+
+    return () => {
+      if (observer && observer.unobserve && imageRef) {
+        observer.unobserve(imageRef);
+      }
+    };
+  }, [imageRef, lazy]);
+
+  useEffect(() => {
+    if (inView && src) {
+      const imageLoader = new Image();
+
+      imageLoader.onload = () => {
+        setImageSrc(src);
+        setLoaded(true);
+        onLoad();
+      };
+
+      imageLoader.onerror = () => {
+        setError(true);
+        onError();
+      };
+
+      imageLoader.src = src;
+    }
+  }, [inView, src, onLoad, onError]);
+
+  const renderImage = () => {
+    if (error) {
+      return (
+        <div
+          className={`flex items-center justify-center bg-gray-200 text-gray-400 ${className}`}
+          style={{ width, height }}
+          {...props}
+        >
+          <span className="text-sm">Resim yüklenemedi</span>
+        </div>
+      );
+    }
+
+    if (!inView || (!loaded && lazy)) {
+      return (
+        <div
+          ref={setImageRef}
+          className={`bg-gray-200 animate-pulse ${className}`}
+          style={{ width, height }}
+          {...props}
+        >
+          {placeholder && (
+            <img
+              src={placeholder}
+              alt={alt}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-0' : 'opacity-100'}`}
+            />
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <img
+        ref={setImageRef}
+        src={imageSrc}
+        alt={alt}
+        className={`transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${className}`}
+        width={width}
+        height={height}
+        loading={lazy ? 'lazy' : 'eager'}
+        {...props}
+      />
+    );
+  };
+
+  return renderImage();
+};
+
+export default OptimizedImage;

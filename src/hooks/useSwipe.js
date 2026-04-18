@@ -1,78 +1,91 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 /**
- * Simple swipe gesture detection hook
+ * Enhanced swipe gesture detection hook with real-time callbacks
  * @param {Object} options Swipe configuration options
  * @returns {Object} Swipe handlers and state
  */
 const useSwipe = (options = {}) => {
   const {
+    onSwiping = () => {},
+    onSwipeEnd = () => {},
     onSwipeLeft = () => {},
     onSwipeRight = () => {},
-    onSwipeUp = () => {},
-    onSwipeDown = () => {},
-    threshold = 50
+    threshold = 50,
+    trackTouch = true,
+    trackMouse = false
   } = options;
 
   const [isSwiping, setIsSwiping] = useState(false);
-  const touchStart = useRef({ x: 0, y: 0 });
+  const touchStart = useRef({ x: 0, y: 0, time: 0 });
+  const lastDelta = useRef({ x: 0, y: 0 });
 
-  const onTouchStart = (e) => {
-    const touch = e.touches[0];
+  const onStart = useCallback((clientX, clientY) => {
     touchStart.current = {
-      x: touch.clientX,
-      y: touch.clientY
+      x: clientX,
+      y: clientY,
+      time: Date.now()
     };
+    lastDelta.current = { x: 0, y: 0 };
     setIsSwiping(true);
-  };
+  }, []);
 
-  const onTouchMove = (e) => {
+  const onMove = useCallback((clientX, clientY, e) => {
     if (!isSwiping) return;
     
-    // Prevent default to avoid scrolling while swiping
-    if (e.cancelable) {
-      e.preventDefault();
+    const deltaX = clientX - touchStart.current.x;
+    const deltaY = clientY - touchStart.current.y;
+    lastDelta.current = { x: deltaX, y: deltaY };
+
+    // Real-time callback
+    onSwiping(e, { deltaX, deltaY });
+
+    // Prevent default to avoid scrolling while swiping horizontally
+    if (Math.abs(deltaX) > Math.abs(deltaY) && e.cancelable) {
+      // e.preventDefault(); // Handled by caller to avoid violation warnings if not passive
     }
-  };
+  }, [isSwiping, onSwiping]);
 
-  const onTouchEnd = (e) => {
+  const onEnd = useCallback((e) => {
     if (!isSwiping) return;
     
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStart.current.x;
-    const deltaY = touch.clientY - touchStart.current.y;
-    
+    const { x: deltaX, y: deltaY } = lastDelta.current;
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
     
-    // Only trigger swipe if movement is above threshold
+    // Generic end callback
+    onSwipeEnd(e, { deltaX, deltaY });
+
+    // Trigger directional callbacks if above threshold
     if (absX > threshold || absY > threshold) {
-      // Horizontal swipe is dominant
       if (absX > absY) {
-        if (deltaX > 0) {
-          onSwipeRight();
-        } else {
-          onSwipeLeft();
-        }
-      }
-      // Vertical swipe is dominant
-      else {
-        if (deltaY > 0) {
-          onSwipeDown();
-        } else {
-          onSwipeUp();
-        }
+        if (deltaX > 0) onSwipeRight();
+        else onSwipeLeft();
       }
     }
     
     setIsSwiping(false);
+  }, [isSwiping, onSwipeEnd, onSwipeLeft, onSwipeRight, threshold]);
+
+  // Event handlers for React elements
+  const handlers = {
+    ...(trackTouch ? {
+      onTouchStart: (e) => onStart(e.touches[0].clientX, e.touches[0].clientY),
+      onTouchMove: (e) => onMove(e.touches[0].clientX, e.touches[0].clientY, e),
+      onTouchEnd: (e) => onEnd(e)
+    } : {}),
+    ...(trackMouse ? {
+      onMouseDown: (e) => onStart(e.clientX, e.clientY),
+      onMouseMove: (e) => onMove(e.clientX, e.clientY, e),
+      onMouseUp: (e) => onEnd(e),
+      onMouseLeave: (e) => isSwiping && onEnd(e)
+    } : {})
   };
 
   return {
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd,
-    isSwiping
+    handlers,
+    isSwiping,
+    delta: lastDelta.current
   };
 };
 

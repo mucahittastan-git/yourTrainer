@@ -28,7 +28,7 @@ export const getStorageUsage = () => {
   const itemSizes = {};
 
   for (let key in localStorage) {
-    if (localStorage.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
       const itemSize = (localStorage[key].length + key.length) * 2; // UTF-16
       itemSizes[key] = itemSize;
       totalSize += itemSize;
@@ -78,11 +78,7 @@ export const safeGetItem = (key, defaultValue = null) => {
  * Safely set data to localStorage with compression and limits
  */
 export const safeSetItem = (key, value, options = {}) => {
-  const { 
-    compress = true, 
-    backup = true,
-    maxRetries = 3 
-  } = options;
+  const { backup = true } = options;
 
   try {
     const dataStr = JSON.stringify(value);

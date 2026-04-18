@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Calendar, DollarSign, Activity, Scale, Ruler, FileText, Clock, Users } from 'lucide-react';
+import { User, Calendar, DollarSign, Activity, FileText, Clock, Users } from 'lucide-react';
 import { formatDate } from '../../utils/helpers';
 
 const Step3Onizleme = ({ formData, loading }) => {
@@ -98,7 +98,7 @@ const Step3Onizleme = ({ formData, loading }) => {
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Bilgileri Kontrol Et</h2>
         <p className="text-gray-600">
-          Aşağıdaki bilgileri kontrol edin ve doğruysa "Üyeliği Tamamla" butonuna tıklayın.
+          Aşağıdaki bilgileri kontrol edin ve doğruysa <strong>Üyeliği Tamamla</strong> butonuna tıklayın.
         </p>
       </div>
 

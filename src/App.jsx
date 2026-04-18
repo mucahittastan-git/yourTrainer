@@ -1,131 +1,58 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './utils/AuthContext';
+import { AuthProvider } from './utils/AuthContext';
 import { ToastProvider } from './utils/ToastContext';
+import { ThemeProvider } from './utils/ThemeContext';
 import ErrorBoundary from './components/error/ErrorBoundary';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
-import NetworkStatusIndicator from './components/NetworkStatusIndicator';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+
+// Components
 import Layout from './components/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
+import NetworkStatusIndicator from './components/NetworkStatusIndicator';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
-// Lazy load heavy pages
+// Lazy load pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const ClientsPage = lazy(() => import('./pages/ClientsPage'));
+const ClientCreatePage = lazy(() => import('./pages/ClientCreatePage'));
 const ClientListPage = lazy(() => import('./pages/ClientListPage'));
 const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'));
 const ClientEditPage = lazy(() => import('./pages/ClientEditPage'));
 const LessonTrackingPage = lazy(() => import('./pages/LessonTrackingPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const MemberPortal = lazy(() => import('./pages/MemberPortal'));
 
-
-// Protected Route bileşeni
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      {children}
-    </Suspense>
-  );
-};
-
-// Ana App bileşeni
+// Simplified App Content
 const AppContent = () => {
-  const { isAuthenticated } = useAuth();
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Network Status Indicator - Her zaman görünür */}
+    <div className="min-h-screen">
       <NetworkStatusIndicator />
+      <PWAInstallPrompt />
       
-      {/* PWA Install Prompt - sadece login olduktan sonra göster */}
-      {isAuthenticated && <PWAInstallPrompt />}
-      
-      <Routes>
-        {/* Ana sayfa - login durumuna göre yönlendirme */}
-        <Route 
-          path="/" 
-          element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
-          } 
-        />
-        
-        {/* Login sayfası */}
-        <Route 
-          path="/login" 
-          element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
-          } 
-        />
-        
-        {/* Register sayfası */}
-        <Route 
-          path="/register" 
-          element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />
-          } 
-        />
-        
-        {/* Korumalı sayfalar */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DashboardPage />} />
-        </Route>
-        
-        <Route 
-          path="/lessons" 
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<LessonTrackingPage />} />
-        </Route>
-        
-        <Route 
-          path="/clients" 
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="new" element={<ClientsPage />} />
-          <Route path="list" element={<ClientListPage />} />
-          <Route path=":id" element={<ClientDetailPage />} />
-          <Route path=":id/edit" element={<ClientEditPage />} />
-          <Route index element={<Navigate to="new" replace />} />
-        </Route>
-        
-        <Route 
-          path="/profile" 
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<ProfilePage />} />
-        </Route>
-        
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="lessons" element={<LessonTrackingPage />} />
+            
+            <Route path="clients">
+              <Route path="new" element={<ClientCreatePage />} />
+              <Route path="list" element={<ClientListPage />} />
+              <Route path=":id" element={<ClientDetailPage />} />
+              <Route path=":id/edit" element={<ClientEditPage />} />
+              <Route index element={<Navigate to="new" replace />} />
+            </Route>
 
-        
-        {/* 404 - tüm diğer route'lar */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
+          
+          {/* Public-style Member Portal Route */}
+          <Route path="/portal/:id" element={<MemberPortal />} />
+          
+          {/* Catch all 404 */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 };
@@ -133,11 +60,13 @@ const AppContent = () => {
 const App = () => {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ToastProvider>
-          <AppContent />
-        </ToastProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 };

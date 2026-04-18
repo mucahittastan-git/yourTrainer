@@ -1,12 +1,14 @@
 // Güvenlik Test Scripti
 // Bu dosya login bilgilerinin devtools'da görünmediğini test eder
 
+import fs from 'fs';
+import path from 'path';
 import { validateLoginCredentials, createSecureSession } from '../src/utils/security.js';
 
 // Test 1: Login bilgileri bundle'da görünür mü?
 const testBundleSecurity = () => {
   console.log('🔍 Testing bundle security...');
-  
+
   // Bu stringler bundle'da aranabilir
   const sensitiveStrings = [
     'demo123',
@@ -15,19 +17,35 @@ const testBundleSecurity = () => {
     'password',
     'mucahit.tastan'
   ];
-  
-  // Bu dosyanın string içeriğini kontrol et
-  const fileContent = testBundleSecurity.toString();
-  
-  const foundSensitive = sensitiveStrings.filter(str => 
-    fileContent.includes(str)
-  );
-  
+
+  // Bundle taraması sadece production build (dist) varsa yapılır
+  const distDir = path.join(process.cwd(), 'dist');
+  if (!fs.existsSync(distDir)) {
+    console.log('ℹ️ No build found (dist). Skipping bundle scan.');
+    return true;
+  }
+
+  const walk = (dir) => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    let results = [];
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) results = results.concat(walk(full));
+      else if (/\.(js|jsx|html|json|css|ts|tsx)$/.test(entry.name)) results.push(full);
+    }
+    return results;
+  };
+
+  const files = walk(distDir);
+  const fileContent = files.map(f => fs.readFileSync(f, 'utf8')).join('\n');
+
+  const foundSensitive = sensitiveStrings.filter(str => fileContent.includes(str));
+
   if (foundSensitive.length > 0) {
     console.error('❌ SECURITY RISK: Found sensitive strings:', foundSensitive);
     return false;
   }
-  
+
   console.log('✅ Bundle security passed');
   return true;
 };
@@ -104,7 +122,5 @@ export const runSecurityTests = () => {
   }
 };
 
-// Sadece development'ta çalıştır
-if (import.meta.env.DEV) {
-  runSecurityTests();
-}
+// Run tests when this script is executed directly
+runSecurityTests();

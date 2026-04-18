@@ -6,10 +6,10 @@ const Layout = () => {
   const location = useLocation();
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-page text-main transition-colors duration-500 overflow-x-hidden">
       <Navbar />
-      <main className="pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="pt-24 pb-12 px-4 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pb-20">
           <div 
             key={location.pathname} 
             className="animate-fade-in"

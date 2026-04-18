@@ -28,32 +28,32 @@ const ProfileFormField = memo(({
   const hasError = error && touched;
   const isTextarea = type === 'textarea';
 
-  // Görüntüleme değerini belirle
   const finalDisplayValue = displayValue !== undefined ? displayValue : value;
 
   if (!isEditing) {
-    // Read-only görünüm
     return (
-      <div className={`space-y-2 ${className}`}>
-        <label className="block text-sm font-medium text-gray-700">
+      <div className={`space-y-3 ${className}`}>
+        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         
         <div className={`
-          w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 relative
+          w-full px-5 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-slate-900 relative transition-all duration-300
           ${isTextarea ? 'min-h-[100px] whitespace-pre-wrap' : ''}
-          ${Icon ? 'pl-10' : ''}
+          ${Icon ? 'pl-2' : ''}
         `}>
-          {Icon && (
-            <Icon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-          )}
-          <div className={Icon && !isTextarea ? 'ml-7' : ''}>
-            {finalDisplayValue || 'Belirtilmemiş'}
+          <div className="flex items-center space-x-4">
+            {Icon && (
+              <Icon className="h-5 w-5 text-slate-500 shrink-0" />
+            )}
+            <div className="font-black tracking-tight text-main">
+              {finalDisplayValue || <span className="text-slate-400 italic font-medium">Belirtilmemiş</span>}
+            </div>
           </div>
         </div>
 
         {helpText && (
-          <p className="text-xs text-gray-500">
+          <p className="text-[10px] text-slate-500 font-medium ml-1">
             {helpText}
           </p>
         )}
@@ -61,19 +61,18 @@ const ProfileFormField = memo(({
     );
   }
 
-  // Edit modu
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-3 ${className}`}>
       <label 
         htmlFor={fieldId} 
-        className="block text-sm font-medium text-gray-700"
+        className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1"
       >
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       
-      <div className="relative">
+      <div className="relative group">
         {Icon && !isTextarea && (
-          <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Icon className="absolute left-5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-500 group-focus-within:text-primary-500 transition-colors z-10" />
         )}
         
         {isTextarea ? (
@@ -88,13 +87,9 @@ const ProfileFormField = memo(({
             autoFocus={autoFocus}
             rows={rows}
             className={`
-              w-full px-3 py-2.5 border rounded-lg transition-colors duration-200 resize-none
-              ${hasError 
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
-              }
-              ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}
-              focus:outline-none focus:ring-2 focus:ring-opacity-20
+              input-premium min-h-[120px] resize-none
+              ${hasError ? 'border-red-300 ring-4 ring-red-500/10' : ''}
+              ${disabled ? 'bg-slate-50 cursor-not-allowed opacity-50' : ''}
             `}
             aria-invalid={hasError}
             aria-describedby={hasError ? `${fieldId}-error` : helpText ? `${fieldId}-help` : undefined}
@@ -115,14 +110,10 @@ const ProfileFormField = memo(({
             disabled={disabled}
             autoFocus={autoFocus}
             className={`
-              w-full px-3 py-2.5 border rounded-lg transition-colors duration-200
-              ${Icon ? 'pl-10' : ''}
-              ${hasError 
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
-              }
-              ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}
-              focus:outline-none focus:ring-2 focus:ring-opacity-20
+              input-premium
+              ${Icon ? 'pl-14' : ''}
+              ${hasError ? 'border-red-300 ring-4 ring-red-500/10' : ''}
+              ${disabled ? 'bg-slate-50 cursor-not-allowed opacity-50' : ''}
             `}
             aria-invalid={hasError}
             aria-describedby={hasError ? `${fieldId}-error` : helpText ? `${fieldId}-help` : undefined}
@@ -132,13 +123,13 @@ const ProfileFormField = memo(({
       </div>
 
       {helpText && !hasError && (
-        <p id={`${fieldId}-help`} className="text-xs text-gray-500">
+        <p id={`${fieldId}-help`} className="text-[10px] text-slate-400 font-medium ml-1">
           {helpText}
         </p>
       )}
 
       {hasError && (
-        <p id={`${fieldId}-error`} className="text-sm text-red-600" role="alert">
+        <p id={`${fieldId}-error`} className="text-xs font-bold text-red-500 ml-1" role="alert">
           {error}
         </p>
       )}

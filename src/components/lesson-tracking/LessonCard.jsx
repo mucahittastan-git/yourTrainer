@@ -1,10 +1,10 @@
-import React from 'react';
-import { Clock, Calendar, User, CheckCircle, XCircle, AlertCircle, Minus } from 'lucide-react';
+import React, { memo } from 'react';
+import { Clock, Calendar, CheckCircle, XCircle, AlertCircle, Minus } from 'lucide-react';
 import { LESSON_STATUS, lessonStatusDisplay } from '../../data/lessonsData';
 import { formatLessonDate, formatLessonTime, isLessonToday } from '../../utils/lessonHelpers';
 import useMobile from '../../hooks/useMobile';
 
-const LessonCard = ({ 
+const LessonCard = memo(({ 
   lesson, 
   client, 
   onComplete, 
@@ -194,12 +194,12 @@ const LessonCard = ({
 
           {/* Action Buttons - Only for planned lessons */}
           {lesson.durum === LESSON_STATUS.PLANNED && (onComplete || onCancel || onMarkNoShow) && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <div className="flex items-center space-x-2">
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center gap-2">
                 {onComplete && (
                   <button
                     onClick={handleQuickComplete}
-                    className="flex-1 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200 touch-manipulation"
+                    className="btn-success flex-1 py-2 px-3 rounded-lg text-sm font-black touch-manipulation"
                   >
                     Tamamla
                   </button>
@@ -208,7 +208,7 @@ const LessonCard = ({
                 {onCancel && (
                   <button
                     onClick={handleCancel}
-                    className="flex-1 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200 touch-manipulation"
+                    className="btn-ghost flex-1 py-2 px-3 rounded-lg text-sm font-black touch-manipulation"
                   >
                     İptal
                   </button>
@@ -217,7 +217,7 @@ const LessonCard = ({
                 {onMarkNoShow && (
                   <button
                     onClick={handleNoShow}
-                    className="flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200 touch-manipulation"
+                    className="btn-danger flex-1 py-2 px-3 rounded-lg text-sm font-black touch-manipulation"
                   >
                     Gelmedi
                   </button>
@@ -348,11 +348,11 @@ const LessonCard = ({
 
         {/* Action Buttons - Only for planned lessons */}
         {lesson.durum === LESSON_STATUS.PLANNED && (onComplete || onCancel || onMarkNoShow) && (
-          <div className="flex items-center space-x-2 mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
             {onComplete && (
               <button
                 onClick={handleQuickComplete}
-                className={`flex-1 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium rounded-lg transition-colors duration-200 touch-manipulation ${
+                className={`btn-success flex-1 font-black rounded-lg touch-manipulation ${
                   isMobile ? 'text-sm py-3 px-2' : 'text-sm py-2 px-3'
                 }`}
               >
@@ -363,7 +363,7 @@ const LessonCard = ({
             {onCancel && (
               <button
                 onClick={handleCancel}
-                className={`flex-1 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white font-medium rounded-lg transition-colors duration-200 touch-manipulation ${
+                className={`btn-ghost flex-1 font-black rounded-lg touch-manipulation ${
                   isMobile ? 'text-sm py-3 px-2' : 'text-sm py-2 px-3'
                 }`}
               >
@@ -374,7 +374,7 @@ const LessonCard = ({
             {onMarkNoShow && (
               <button
                 onClick={handleNoShow}
-                className={`flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium rounded-lg transition-colors duration-200 touch-manipulation ${
+                className={`btn-danger flex-1 font-black rounded-lg touch-manipulation ${
                   isMobile ? 'text-sm py-3 px-2' : 'text-sm py-2 px-3'
                 }`}
               >
@@ -386,6 +386,8 @@ const LessonCard = ({
       </div>
     </div>
   );
-};
+});
+
+LessonCard.displayName = 'LessonCard';
 
 export default LessonCard;

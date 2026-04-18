@@ -10,7 +10,6 @@ const usePullToRefresh = (onRefresh, options = {}) => {
   const {
     threshold = 80,
     disabled = false,
-    pullDownThreshold = 50,
     maxPullDistance = 150,
     refreshTimeout = 2000
   } = options;

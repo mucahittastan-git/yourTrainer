@@ -1,5 +1,5 @@
 // Date utility functions (basit JavaScript Date kullanımı)
-const formatDateLocale = (date, formatString = 'dd.MM.yyyy') => {
+const formatDateLocale = (date, _formatString = 'dd.MM.yyyy') => {
   if (!date) return '';
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   

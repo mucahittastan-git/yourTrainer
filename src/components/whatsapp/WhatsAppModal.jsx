@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  X, MessageCircle, Send, Clock, Target, Users, 
-  Zap, Search, Filter, Eye, Edit3, Copy, Smartphone
+  X, MessageCircle, Clock, Target, Zap, Search, Eye, Edit3, Copy, Smartphone
 } from 'lucide-react';
 import { 
   WORKOUT_TEMPLATES, 
@@ -211,7 +210,7 @@ const WhatsAppModal = ({ isOpen, onClose, selectedClient = null, selectedDate = 
     }
   };
 
-  const TabButton = ({ id, label, icon: Icon, isActive, onClick, isMobile = false }) => (
+  const TabButton = ({ label, icon: Icon, isActive, onClick, isMobile = false }) => (
     <button
       onClick={onClick}
       className={`flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors flex-1 sm:flex-none ${
@@ -563,7 +562,7 @@ const WhatsAppModal = ({ isOpen, onClose, selectedClient = null, selectedDate = 
                 title={!selectedClientData?.telefon ? 'Müşteri telefon numarası gerekli' : 'WhatsApp\'a Gönder'}
               >
                 <MessageCircle className="h-4 w-4" />
-                <span>WhatsApp'a Gönder</span>
+                <span>WhatsApp&apos;a Gönder</span>
               </button>
               
               {!selectedClientData?.telefon && selectedClientData && (

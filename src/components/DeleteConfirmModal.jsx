@@ -74,37 +74,36 @@ const DeleteConfirmModal = ({
           )}
 
           {/* Content */}
-          <div className="p-6">
+          <div className="p-8">
             {/* Warning Icon */}
-            <div className="mx-auto mb-4">
-              <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-8 w-8 text-red-600" />
+            <div className="mx-auto mb-6">
+              <div className="w-20 h-20 mx-auto bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20">
+                <AlertTriangle className="h-10 w-10 text-red-600" />
               </div>
             </div>
 
             {/* Title */}
-            <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">
+            <h3 className="text-2xl font-black text-main mb-3 text-center tracking-tight">
               Müşteriyi Sil
             </h3>
 
             {/* Warning Message */}
-            <div className="mb-6">
-              <p className="text-gray-600 text-center mb-4">
-                <strong className="text-gray-900">{customerName}</strong> adlı müşteriyi silmek istediğinizden emin misiniz?
+            <div className="mb-8">
+              <p className="text-slate-600 text-center mb-6 font-medium leading-relaxed">
+                <strong className="text-main">{customerName}</strong> adlı müşteriyi silmek istediğinizden emin misiniz?
               </p>
               
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="bg-red-500/5 border border-red-500/10 rounded-3xl p-6">
                 <div className="flex">
-                  <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div className="ml-3">
-                    <h4 className="text-sm font-semibold text-red-800">Dikkat!</h4>
-                    <div className="text-sm text-red-700 mt-1">
-                      <p>Bu işlem geri alınamaz. Silinen veriler:</p>
-                      <ul className="mt-2 space-y-1">
-                        <li>• Tüm kişisel bilgiler</li>
-                        <li>• Vücut ölçüleri</li>
-                        <li>• Ders geçmişi</li>
-                        <li>• Ödeme kayıtları</li>
+                  <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-1" />
+                  <div className="ml-4">
+                    <h4 className="text-[10px] font-black text-red-800 uppercase tracking-widest leading-none">Kritik Uyarı</h4>
+                    <div className="text-xs text-red-700/80 mt-3 font-medium space-y-2">
+                      <p>Bu işlem portföyünüzden şu verileri kalıcı olarak siler:</p>
+                      <ul className="space-y-1">
+                        <li>• Kişisel bilgiler ve ölçüm geçmişi</li>
+                        <li>• Tüm seans takvimi ve notlar</li>
+                        <li>• Finansal ödeme kayıtları</li>
                       </ul>
                     </div>
                   </div>
@@ -113,9 +112,9 @@ const DeleteConfirmModal = ({
             </div>
 
             {/* Confirmation Input */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Silmek için <strong>\"sil\"</strong> yazın:
+            <div className="mb-8">
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2">
+                Onaylamak için <span className="text-red-600">SİL</span> yazın:
               </label>
               <input
                 type="text"
@@ -123,38 +122,34 @@ const DeleteConfirmModal = ({
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder="sil"
                 disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 disabled:bg-gray-100"
+                className="input-premium border-red-100 focus:border-red-500 placeholder:opacity-30"
               />
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3">
+            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
               <button
                 onClick={handleClose}
                 disabled={loading}
-                className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-medium min-w-0"
+                className="btn-ghost flex-1 py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest"
               >
-                <span className="truncate">İptal</span>
+                İptal
               </button>
               
               <button
                 onClick={handleConfirm}
                 disabled={!isConfirmValid || loading}
-                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2 min-w-0 ${
-                  isConfirmValid && !loading
-                    ? 'bg-red-600 hover:bg-red-700 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                className="btn-danger flex-1 py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                    <span className="truncate">Siliniyor...</span>
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <span>Siliniyor...</span>
                   </>
                 ) : (
                   <>
-                    <Trash2 className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">Müşteriyi Sil</span>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Kalıcı Olarak Sil</span>
                   </>
                 )}
               </button>
@@ -162,9 +157,9 @@ const DeleteConfirmModal = ({
           </div>
 
           {/* Footer Warning */}
-          <div className="bg-gray-50 px-6 py-3 rounded-b-2xl">
-            <p className="text-xs text-gray-500 text-center">
-              Bu işlem kalıcıdır ve geri alınamaz
+          <div className="bg-slate-50/50 px-8 py-4 rounded-b-3xl border-t border-slate-100">
+            <p className="text-[9px] font-black text-slate-400 text-center uppercase tracking-tighter">
+              BU İŞLEM PT ALTYAPISINDAN VERİLERİ KALICI OLARAK KALDIRIR
             </p>
           </div>
         </div>

@@ -51,17 +51,17 @@ if ('serviceWorker' in navigator) {
 }
 
 // PWA Install Prompt Handling
-let deferredPrompt;
+let _deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   console.log('💾 PWA install prompt available');
   e.preventDefault();
-  deferredPrompt = e;
+  _deferredPrompt = e;
 });
 
 // PWA Install Success
 window.addEventListener('appinstalled', () => {
   console.log('🎉 PWA installed successfully');
-  deferredPrompt = null;
+  _deferredPrompt = null;
   
   // Analytics event
   if ('gtag' in window) {
@@ -71,6 +71,9 @@ window.addEventListener('appinstalled', () => {
     });
   }
 });
+
+// Reference to avoid unused variable ESLint warning
+void _deferredPrompt;
 
 // Error boundary for unhandled promises
 window.addEventListener('unhandledrejection', (event) => {

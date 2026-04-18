@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, X, Zap } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import useMobile from '../../hooks/useMobile';
 
 const FloatingActionButton = ({ 
   actions = [], 
-  mainAction,
-  position = 'bottom-right',
+  mainAction: _mainAction,
+  position: _position = 'bottom-right',
   disabled = false,
   className = '' 
 }) => {

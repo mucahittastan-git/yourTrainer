@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, X } from 'lucide-react';
 
 const SuccessModal = ({ isOpen, onClose, title, message, duration = 3000 }) => {
   const [isVisible, setIsVisible] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  }, [onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -14,14 +21,7 @@ const SuccessModal = ({ isOpen, onClose, title, message, duration = 3000 }) => {
       
       return () => clearTimeout(timer);
     }
-  }, [isOpen, duration]);
-
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(() => {
-      onClose();
-    }, 300);
-  };
+  }, [isOpen, duration, handleClose]);
 
   if (!isOpen) return null;
 
@@ -45,9 +45,9 @@ const SuccessModal = ({ isOpen, onClose, title, message, duration = 3000 }) => {
           {/* Close Button */}
           <button
             onClick={handleClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            className="btn-icon absolute top-4 right-4 w-8 h-8 rounded-lg"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
 
           {/* Content */}
@@ -92,7 +92,7 @@ const SuccessModal = ({ isOpen, onClose, title, message, duration = 3000 }) => {
             {/* Action Button */}
             <button
               onClick={handleClose}
-              className={`w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-all duration-200 ${
+              className={`btn-success w-full py-3 px-6 rounded-xl font-black text-sm transition-all duration-200 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
               }`}
               style={{ transitionDelay: '500ms' }}

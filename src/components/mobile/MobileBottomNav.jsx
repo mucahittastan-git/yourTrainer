@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Users, Calendar, User, Plus, LogOut, UserPlus } from 'lucide-react';
+import { Home, Users, Calendar, User, Plus } from 'lucide-react';
 import useMobile from '../../hooks/useMobile';
 import { useAuth } from '../../utils/AuthContext';
 
@@ -8,18 +8,6 @@ const MobileBottomNav = ({ onAddClick }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isMobile } = useMobile();
-  const { logout } = useAuth();
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
-  // Don't show on desktop or login page
-  if (!isMobile || location.pathname === '/login') {
-    return null;
-  }
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   const navItems = [
     {
@@ -77,9 +65,7 @@ const MobileBottomNav = ({ onAddClick }) => {
 
   // Long press handler for profile to show logout
   const handleProfileLongPress = () => {
-    if (location.pathname === '/profile') {
-      setShowLogoutConfirm(true);
-    }
+    // Disabled as auth is removed
   };
 
   return (
@@ -143,48 +129,13 @@ const MobileBottomNav = ({ onAddClick }) => {
                 {/* Ripple effect */}
                 <div className="absolute inset-0 bg-primary-600/20 rounded-2xl transform scale-0 group-active:scale-100 transition-transform duration-200 opacity-50" />
 
-                {/* Long press hint for profile */}
-                {item.id === 'profile' && active && (
-                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-400 whitespace-nowrap bg-gray-800/80 text-white px-2 py-1 rounded-lg">
-                    Uzun basın: Çıkış
-                  </div>
-                )}
+
               </button>
             );
           })}
         </div>
       </nav>
 
-      {/* Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <LogOut className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Çıkış Yap</h3>
-                <p className="text-sm text-gray-600">Hesabınızdan çıkmak istediğinizden emin misiniz?</p>
-              </div>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
-              >
-                İptal
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors duration-200"
-              >
-                Çıkış Yap
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };
