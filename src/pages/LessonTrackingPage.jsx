@@ -1,74 +1,63 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '../utils/AuthContext';
 import { useToast } from '../utils/ToastContext';
-import { 
-  getTodaysLessons, 
-  getUpcomingLessons, 
-  getLessonsByPT,
-  quickCompleteLesson,
-  markLessonNoShow,
-  cancelLesson,
-  updateLesson
-} from '../utils/lessonHelpers';
-import { getFromLocalStorage } from '../utils/helpers';
+import { useLessons } from '../hooks/useLessons';
 import { loadDemoLessons, addSingleLesson } from '../utils/lessonGenerators';
 
 // Components
 import LessonCalendar from '../components/lesson-tracking/LessonCalendar';
 import LessonModal from '../components/lesson-tracking/LessonModal';
 import QuickLessonForm from '../components/lesson-tracking/QuickLessonForm';
-import LessonCard from '../components/lesson-tracking/LessonCard';
+import LessonList from '../components/lesson-tracking/LessonList';
 import WhatsAppModal from '../components/whatsapp/WhatsAppModal';
 
 // Mobile components
 import { MobileHeader, FloatingActionButton } from '../components/mobile';
 import useMobile from '../hooks/useMobile';
+import { LessonPageSkeleton } from '../components/ui/Skeleton';
 
 // Icons
-import { Calendar, Clock, Users, Activity, TrendingUp, CheckCircle, Plus, UserPlus, CalendarPlus, Eye, MessageCircle } from 'lucide-react';
+import { 
+  Calendar, 
+  Clock, 
+  Activity, 
+  TrendingUp, 
+  CheckCircle, 
+  CalendarPlus, 
+  Eye, 
+  MessageCircle,
+  Award,
+  Zap,
+  Star
+} from 'lucide-react';
 
 const LessonTrackingPage = () => {
   const { currentPT } = useAuth();
   const { toast } = useToast();
   const { isMobile } = useMobile();
+  const { 
+    clients, 
+    todaysLessons, 
+    upcomingLessons, 
+    allLessons, 
+    stats: lessonStats,
+    refresh,
+    handleMarkNoShow,
+    handleCancelLesson
+  } = useLessons();
   
-  // State management
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [showQuickForm, setShowQuickForm] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [whatsAppSelectedClient, setWhatsAppSelectedClient] = useState(null);
   const [whatsAppSelectedDate, setWhatsAppSelectedDate] = useState(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [view, setView] = useState('calendar'); // 'calendar', 'today', 'upcoming'
 
-  // Load demo data on first visit
   React.useEffect(() => {
     loadDemoLessons();
   }, []);
 
-  // Get all data
-  const clients = useMemo(() => {
-    const clientsData = getFromLocalStorage('musteriler', []);
-    return clientsData.reduce((acc, client) => {
-      acc[client.id] = client;
-      return acc;
-    }, {});
-  }, [refreshTrigger]);
-
-  const todaysLessons = useMemo(() => {
-    return getTodaysLessons(currentPT?.id);
-  }, [currentPT?.id, refreshTrigger]);
-
-  const upcomingLessons = useMemo(() => {
-    return getUpcomingLessons(currentPT?.id, 7);
-  }, [currentPT?.id, refreshTrigger]);
-
-  const allLessons = useMemo(() => {
-    return getLessonsByPT(currentPT?.id);
-  }, [currentPT?.id, refreshTrigger]);
-
-  // Event handlers
   const handleLessonClick = (lesson) => {
     setSelectedLesson(lesson);
     setShowLessonModal(true);
@@ -82,103 +71,58 @@ const LessonTrackingPage = () => {
     }
   };
 
-  const handleQuickCompleteSubmit = (updatedLesson) => {
+  const handleQuickCompleteSubmit = (_updatedLesson) => {
     setShowQuickForm(false);
     setSelectedLesson(null);
-    setRefreshTrigger(prev => prev + 1);
+    refresh();
     toast.success('Ders başarıyla tamamlandı! 🎉');
   };
 
-  const handleMarkNoShow = async (lessonId) => {
-    try {
-      markLessonNoShow(lessonId, 'Müşteri gelmedi');
-      setRefreshTrigger(prev => prev + 1);
-      toast.warning('Ders "Gelmedi" olarak işaretlendi');
-    } catch (error) {
-      toast.error('Bir hata oluştu');
-    }
-  };
-
-  const handleCancelLesson = async (lessonId) => {
-    try {
-      cancelLesson(lessonId, 'İptal edildi');
-      setRefreshTrigger(prev => prev + 1);
-      toast.info('Ders iptal edildi');
-    } catch (error) {
-      toast.error('Bir hata oluştu');
-    }
-  };
-
-  const handleLessonUpdate = (updatedLesson) => {
+  const handleLessonUpdate = (_updatedLesson) => {
     setShowLessonModal(false);
     setSelectedLesson(null);
-    setRefreshTrigger(prev => prev + 1);
+    refresh();
     toast.success('Ders güncellendi');
   };
 
-  const handleLessonDelete = (lessonId) => {
+  const handleLessonDelete = (_lessonId) => {
     setShowLessonModal(false);
     setSelectedLesson(null);
-    setRefreshTrigger(prev => prev + 1);
+    refresh();
     toast.info('Ders silindi');
   };
 
   const handleAddLesson = (selectedDate) => {
-    // Yeni ders ekleme modal'ını açabilir veya basit bir form gösterebiliriz
-    const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : null;
-    
-    // İlk olarak mevcut müşteriler varsa onlardan birine ders ekleyebiliriz
+    const dateStr = selectedDate ? (selectedDate instanceof Date ? selectedDate.toISOString().split('T')[0] : selectedDate) : null;
     const availableClients = Object.values(clients).filter(client => {
       if (!client.tahmini_bitis_tarihi) return true;
       return new Date(client.tahmini_bitis_tarihi) > new Date();
     });
     
     if (availableClients.length === 0) {
-      toast.warning('Aktif müşteriniz yok. Önce bir müşteri ekleyin.');
+      toast.warning('Aktif üyeniz yok. Önce bir üye ekleyin.');
       return;
     }
     
-    // Basit bir implementation - ilk aktif müşteriye ders ekle
     const firstClient = availableClients[0];
-    const dayName = getDayNameFromDate(selectedDate || new Date());
+    const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    const dayName = days[(selectedDate || new Date()).getDay()];
     
     try {
-      const newLesson = {
+      addSingleLesson({
         musteri_id: firstClient.id,
         pt_id: currentPT?.id,
         planlanan_tarih: dateStr || new Date().toISOString().split('T')[0],
         planlanan_saat: '14:00',
         planlanan_gun: dayName
-      };
-      
-      // addSingleLesson kullanarak ders ekle
-      addSingleLesson(newLesson);
-      
-      setRefreshTrigger(prev => prev + 1);
-      toast.success(`${firstClient.ad} ${firstClient.soyad} için ${dateStr || 'bugün'} tarihine ders eklendi`);
+      });
+      refresh();
+      toast.success(`${firstClient.ad} ${firstClient.soyad} için ders eklendi`);
     } catch (error) {
       toast.error('Ders eklenirken bir hata oluştu');
     }
   };
-  
-  // Helper function for day name
-  const getDayNameFromDate = (date) => {
-    const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-    return days[date.getDay()];
-  };
 
-  // Refresh function for pull-to-refresh
-  const handleRefresh = async () => {
-    try {
-      setRefreshTrigger(prev => prev + 1);
-      toast.success('Ders verileri yenilendi! 🔄');
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (error) {
-      toast.error('Yenileme sırasında hata oluştu');
-    }
-  };
-
-  // WhatsApp modal handlers
   const handleOpenWhatsApp = (client = null, date = null) => {
     setWhatsAppSelectedClient(client);
     setWhatsAppSelectedDate(date);
@@ -191,354 +135,161 @@ const LessonTrackingPage = () => {
     setWhatsAppSelectedDate(null);
   };
 
-  // Stats calculations
-  const stats = useMemo(() => {
-    const completed = allLessons.filter(l => l.durum === 'tamamlandi').length;
-    const total = allLessons.length;
-    const planned = allLessons.filter(l => l.durum === 'planlandi').length;
-    const today = todaysLessons.length;
-    
-    return { completed, total, planned, today };
-  }, [allLessons, todaysLessons]);
-
   const ViewToggle = () => (
-    <div className="flex items-center bg-gray-100 rounded-lg p-1">
-      <button
-        onClick={() => setView('calendar')}
-        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-          view === 'calendar' 
-            ? 'bg-white text-gray-900 shadow-sm' 
-            : 'text-gray-600 hover:text-gray-900'
-        }`}
-      >
-        <Calendar className="h-4 w-4 mr-2 inline" />
-        {isMobile ? 'Takvim' : 'Takvim'}
-      </button>
-      <button
-        onClick={() => setView('today')}
-        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-          view === 'today' 
-            ? 'bg-white text-gray-900 shadow-sm' 
-            : 'text-gray-600 hover:text-gray-900'
-        }`}
-      >
-        <Clock className="h-4 w-4 mr-2 inline" />
-        {isMobile ? 'Bugün' : 'Bugün'}
-      </button>
-      <button
-        onClick={() => setView('upcoming')}
-        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-          view === 'upcoming' 
-            ? 'bg-white text-gray-900 shadow-sm' 
-            : 'text-gray-600 hover:text-gray-900'
-        }`}
-      >
-        <TrendingUp className="h-4 w-4 mr-2 inline" />
-        {isMobile ? 'Yaklaşan' : 'Yaklaşan'}
-      </button>
+    <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+      {[
+        { id: 'calendar', label: 'Takvim', icon: Calendar },
+        { id: 'today', label: 'Bugün', icon: Clock },
+        { id: 'upcoming', label: 'Gelecek', icon: TrendingUp }
+      ].map((item) => (
+        <button
+          key={item.id}
+          onClick={() => setView(item.id)}
+          className={`flex items-center space-x-2 px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-500 ${
+            view === item.id 
+              ? 'bg-white text-primary-500 shadow-xl shadow-primary-500/10 scale-105' 
+              : 'text-slate-400 hover:text-main hover:bg-white/50'
+          }`}
+        >
+          <item.icon className={`h-3.5 w-3.5 ${view === item.id ? 'text-primary-500' : 'text-slate-400'}`} />
+          <span>{item.label}</span>
+        </button>
+      ))}
     </div>
   );
 
   return (
-    <div>
-      {/* Mobile Header */}
+    <div className="max-w-7xl mx-auto px-4 lg:px-0 mb-20 md:mb-0">
       <MobileHeader 
         title="Ders Takibi"
-        subtitle={`${stats.total} toplam ders`}
+        subtitle={`${lessonStats.total || 0} toplam seans`}
         showBack={false}
       />
 
-      <div className={`space-y-6 ${isMobile ? 'space-y-4' : 'space-y-8'}`}>
-        {/* Header - Desktop Only */}
+      <div className={`space-y-12 ${isMobile ? 'pt-4' : 'pt-0'}`}>
+        {/* 👑 Elite Header */}
         {!isMobile && (
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Ders Takip Sistemi</h1>
-              <p className="text-gray-600 mt-1">
-                Tüm derslerinizi takip edin, tamamlayın ve notlar ekleyin
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-4">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-500 text-[10px] font-black uppercase tracking-widest">
+                <Activity className="h-3 w-3" />
+                <span>Performans Takvimi</span>
+              </div>
+              <h1 className="text-4xl lg:text-5xl font-black text-main tracking-tight">
+                Ders <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-indigo-500">Planlama</span>
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 font-medium max-w-lg leading-relaxed">
+                Haftalık programını optimize et, üyelerinin ilerlemesini anlık takip et ve seanslarını yönet.
               </p>
             </div>
-            
             <ViewToggle />
           </div>
         )}
 
-        {/* Mobile View Toggle */}
-        {isMobile && (
-          <div className="flex justify-center">
-            <ViewToggle />
-          </div>
-        )}
+        {isMobile && <div className="flex justify-center"><ViewToggle /></div>}
 
-        {/* Stats Cards */}
-        <div className={`grid gap-4 ${
-          isMobile 
-            ? 'grid-cols-2' 
-            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-        }`}>
-          <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover-lift ${
-            isMobile ? 'p-4' : 'p-6'
-          }`}>
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className={`bg-blue-100 rounded-xl flex items-center justify-center ${
-                  isMobile ? 'w-10 h-10' : 'w-12 h-12'
-                }`}>
-                  <Calendar className={`text-blue-600 ${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
+        {/* 📊 Premium Stats Bar */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { label: 'Bugünkü Seans', val: todaysLessons.length, icon: Clock, color: 'text-primary-500', bg: 'bg-primary-500/10' },
+            { label: 'Tamamlanan', val: lessonStats.completed, icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+            { label: 'Planlanan', val: lessonStats.planned, icon: Calendar, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+            { label: 'Başarı Skoru', val: `%${lessonStats.completionRate}`, icon: Star, color: 'text-indigo-500', bg: 'bg-indigo-500/10' }
+          ].map((stat, i) => (
+            <div key={i} className="glass-card rounded-[2rem] p-6 hover-lift border-none shadow-xl shadow-primary-500/5 group transition-all duration-500">
+              <div className="flex flex-col space-y-4">
+                <div className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                  <stat.icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{stat.label}</p>
+                  <p className="text-3xl font-black text-main tracking-tighter">{stat.val}</p>
                 </div>
               </div>
-              <div className="ml-3">
-                <p className={`font-medium text-gray-600 ${
-                  isMobile ? 'text-xs' : 'text-sm'
-                }`}>Bugünkü Dersler</p>
-                <p className={`font-bold text-gray-900 ${
-                  isMobile ? 'text-lg' : 'text-2xl'
-                }`}>{stats.today}</p>
-              </div>
             </div>
-          </div>
-
-          <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover-lift ${
-            isMobile ? 'p-4' : 'p-6'
-          }`}>
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className={`bg-green-100 rounded-xl flex items-center justify-center ${
-                  isMobile ? 'w-10 h-10' : 'w-12 h-12'
-                }`}>
-                  <CheckCircle className={`text-green-600 ${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-                </div>
-              </div>
-              <div className="ml-3">
-                <p className={`font-medium text-gray-600 ${
-                  isMobile ? 'text-xs' : 'text-sm'
-                }`}>Tamamlanan</p>
-                <p className={`font-bold text-gray-900 ${
-                  isMobile ? 'text-lg' : 'text-2xl'
-                }`}>{stats.completed}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover-lift ${
-            isMobile ? 'p-4' : 'p-6'
-          }`}>
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className={`bg-orange-100 rounded-xl flex items-center justify-center ${
-                  isMobile ? 'w-10 h-10' : 'w-12 h-12'
-                }`}>
-                  <Clock className={`text-orange-600 ${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-                </div>
-              </div>
-              <div className="ml-3">
-                <p className={`font-medium text-gray-600 ${
-                  isMobile ? 'text-xs' : 'text-sm'
-                }`}>Planlanmış</p>
-                <p className={`font-bold text-gray-900 ${
-                  isMobile ? 'text-lg' : 'text-2xl'
-                }`}>{stats.planned}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className={`bg-white rounded-xl shadow-sm border border-gray-200 hover-lift ${
-            isMobile ? 'p-4' : 'p-6'
-          }`}>
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className={`bg-purple-100 rounded-xl flex items-center justify-center ${
-                  isMobile ? 'w-10 h-10' : 'w-12 h-12'
-                }`}>
-                  <Activity className={`text-purple-600 ${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-                </div>
-              </div>
-              <div className="ml-3">
-                <p className={`font-medium text-gray-600 ${
-                  isMobile ? 'text-xs' : 'text-sm'
-                }`}>Toplam Ders</p>
-                <p className={`font-bold text-gray-900 ${
-                  isMobile ? 'text-lg' : 'text-2xl'
-                }`}>{stats.total}</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Main Content */}
-        <div className="space-y-6">
+        {/* 🗓️ Main Interface */}
+        <div className="animate-fade-in pb-12">
           {view === 'calendar' && (
-            <LessonCalendar
-              onLessonClick={handleLessonClick}
-              onAddLesson={handleAddLesson}
-              ptId={currentPT?.id}
-              isMobile={isMobile}
-            />
+            <div className="glass-card rounded-[2.5rem] p-8 lg:p-12 border-white/20 shadow-2xl">
+              <LessonCalendar
+                onLessonClick={handleLessonClick}
+                onAddLesson={handleAddLesson}
+                ptId={currentPT?.id}
+                isMobile={isMobile}
+              />
+            </div>
           )}
 
           {view === 'today' && (
-            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${
-              isMobile ? 'p-4' : 'p-6'
-            }`}>
-              <h2 className={`font-bold text-gray-900 mb-4 flex items-center ${
-                isMobile ? 'text-lg' : 'text-2xl'
-              }`}>
-                <Clock className={`mr-2 ${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-                Bugünkü Dersler ({todaysLessons.length})
-              </h2>
-              
-              {todaysLessons.length > 0 ? (
-                <div className="space-y-3">
-                  {todaysLessons.map(lesson => (
-                    <LessonCard
-                      key={lesson.id}
-                      lesson={lesson}
-                      client={clients[lesson.musteri_id]}
-                      onEdit={handleLessonClick}
-                      onComplete={handleQuickComplete}
-                      onCancel={handleCancelLesson}
-                      onMarkNoShow={handleMarkNoShow}
-                      compact={true}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className={`text-center ${isMobile ? 'py-8' : 'py-12'}`}>
-                  <Clock className={`text-gray-400 mx-auto mb-4 ${
-                    isMobile ? 'h-8 w-8' : 'h-12 w-12'
-                  }`} />
-                  <h3 className={`font-medium text-gray-900 mb-2 ${
-                    isMobile ? 'text-base' : 'text-lg'
-                  }`}>Bugün ders yok</h3>
-                  <p className={`text-gray-600 ${
-                    isMobile ? 'text-sm' : 'text-base'
-                  }`}>Bugün için planlanmış bir ders bulunmuyor.</p>
-                </div>
-              )}
+            <div className="space-y-8">
+              <LessonList 
+                lessons={todaysLessons}
+                clients={clients}
+                title="BUGÜNKÜ AKIŞ"
+                showProgress={true}
+                onLessonClick={handleLessonClick}
+                onQuickComplete={handleQuickComplete}
+                variant="premium"
+                maxItems={50}
+              />
             </div>
           )}
 
           {view === 'upcoming' && (
-            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${
-              isMobile ? 'p-4' : 'p-6'
-            }`}>
-              <h2 className={`font-bold text-gray-900 mb-4 flex items-center ${
-                isMobile ? 'text-lg' : 'text-2xl'
-              }`}>
-                <TrendingUp className={`mr-2 ${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-                Yaklaşan Dersler (7 Gün) - {upcomingLessons.length}
-              </h2>
-              
-              {upcomingLessons.length > 0 ? (
-                <div className="space-y-4">
-                  {upcomingLessons.map(lesson => (
-                    <LessonCard
-                      key={lesson.id}
-                      lesson={lesson}
-                      client={clients[lesson.musteri_id]}
-                      onEdit={handleLessonClick}
-                      onComplete={handleQuickComplete}
-                      onCancel={handleCancelLesson}
-                      onMarkNoShow={handleMarkNoShow}
-                      compact={true}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className={`text-center ${isMobile ? 'py-8' : 'py-12'}`}>
-                  <TrendingUp className={`text-gray-400 mx-auto mb-4 ${
-                    isMobile ? 'h-8 w-8' : 'h-12 w-12'
-                  }`} />
-                  <h3 className={`font-medium text-gray-900 mb-2 ${
-                    isMobile ? 'text-base' : 'text-lg'
-                  }`}>Yaklaşan ders yok</h3>
-                  <p className={`text-gray-600 ${
-                    isMobile ? 'text-sm' : 'text-base'
-                  }`}>Önümüzdeki 7 gün için planlanmış ders bulunmuyor.</p>
-                </div>
-              )}
+            <div className="space-y-8">
+              <LessonList 
+                lessons={upcomingLessons}
+                clients={clients}
+                title="YAKLAŞAN SEANSLAR"
+                onLessonClick={handleLessonClick}
+                onQuickComplete={handleQuickComplete}
+                variant="premium"
+                maxItems={50}
+              />
             </div>
           )}
         </div>
 
-        {/* WhatsApp Program Share Button - Desktop */}
-        {!isMobile && (
-          <div className="fixed bottom-6 right-6 z-40">
-            <button
-              onClick={() => handleOpenWhatsApp()}
-              className="bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
-              title="WhatsApp ile Program Gönder"
-            >
-              <MessageCircle className="h-6 w-6 group-hover:scale-110 transition-transform" />
-            </button>
-          </div>
-        )}
-
-        {/* Floating Action Button for Mobile */}
         <FloatingActionButton
           actions={[
             {
               icon: MessageCircle,
-              label: 'WP Program İlet',
-              color: 'bg-green-100',
-              textColor: 'text-green-600',
+              label: 'WhatsApp Bildirimi',
+              color: 'bg-emerald-500',
+              textColor: 'text-white',
               onClick: () => handleOpenWhatsApp()
             },
             {
               icon: CalendarPlus,
               label: 'Ders Ekle',
-              color: 'bg-blue-100',
-              textColor: 'text-blue-600',
+              color: 'bg-indigo-600',
+              textColor: 'text-white',
               onClick: () => handleAddLesson()
-            },
-            {
-              icon: Eye,
-              label: 'Takvim Görünümü',
-              color: 'bg-purple-100',
-              textColor: 'text-purple-600',
-              onClick: () => setView('calendar')
-            },
-            {
-              icon: Clock,
-              label: 'Bugünkü Dersler',
-              color: 'bg-green-100',
-              textColor: 'text-green-600',
-              onClick: () => setView('today')
-            },
-            {
-              icon: TrendingUp,
-              label: 'Yaklaşan Dersler',
-              color: 'bg-orange-100',
-              textColor: 'text-orange-600',
-              onClick: () => setView('upcoming')
             }
           ]}
         />
 
-        {/* Modals */}
         <LessonModal
           lesson={selectedLesson}
           client={selectedLesson ? clients[selectedLesson.musteri_id] : null}
           isOpen={showLessonModal}
-          onClose={() => {
-            setShowLessonModal(false);
-            setSelectedLesson(null);
-          }}
+          onClose={() => { setShowLessonModal(false); setSelectedLesson(null); }}
           onUpdate={handleLessonUpdate}
           onDelete={handleLessonDelete}
+          onMarkNoShow={() => handleMarkNoShow(selectedLesson?.id)}
+          onCancel={() => handleCancelLesson(selectedLesson?.id)}
         />
 
         <QuickLessonForm
           lesson={selectedLesson}
           isOpen={showQuickForm}
           onComplete={handleQuickCompleteSubmit}
-          onCancel={() => {
-            setShowQuickForm(false);
-            setSelectedLesson(null);
-          }}
+          onCancel={() => { setShowQuickForm(false); setSelectedLesson(null); }}
         />
 
-        {/* WhatsApp Modal */}
         <WhatsAppModal
           isOpen={showWhatsAppModal}
           onClose={handleCloseWhatsApp}

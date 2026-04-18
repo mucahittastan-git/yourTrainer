@@ -13,18 +13,16 @@ export const useToast = () => {
 
 const Toast = ({ toast, onRemove }) => {
   const [progress, setProgress] = React.useState(100);
-  const [timeLeft, setTimeLeft] = React.useState(toast.duration);
+  const timeLeftRef = React.useRef(toast.duration);
 
   React.useEffect(() => {
     if (toast.duration <= 0 || !toast.isVisible) return;
 
     const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        const newTime = Math.max(0, prev - 100);
-        const newProgress = (newTime / toast.duration) * 100;
-        setProgress(newProgress);
-        return newTime;
-      });
+      const newTime = Math.max(0, timeLeftRef.current - 100);
+      timeLeftRef.current = newTime;
+      const newProgress = (newTime / toast.duration) * 100;
+      setProgress(newProgress);
     }, 100);
 
     return () => clearInterval(interval);
@@ -244,25 +242,20 @@ export const ToastProvider = ({ children }) => {
       {children}
       
       {/* Toast Container */}
-      <div 
-        className="toast-container"
+      <div
+        className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none w-full max-w-sm"
         aria-label="Bildirimler"
         role="region"
       >
-        <div className="space-y-3">
-          {toasts.map((toastItem, index) => (
-            <div 
-              key={toastItem.id} 
-              className="toast-item"
-              style={{
-                zIndex: 9999 - index, // En yeni toast en üstte
-                transform: `translateY(${index * 4}px)` // Hafif stacking effect
-              }}
-            >
-              <Toast toast={toastItem} onRemove={removeToast} />
-            </div>
-          ))}
-        </div>
+        {toasts.map((toastItem, index) => (
+          <div
+            key={toastItem.id}
+            className="pointer-events-auto"
+            style={{ zIndex: 9999 - index }}
+          >
+            <Toast toast={toastItem} onRemove={removeToast} />
+          </div>
+        ))}
       </div>
     </ToastContext.Provider>
   );

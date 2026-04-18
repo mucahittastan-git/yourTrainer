@@ -1,143 +1,72 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useMemo, useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
-import { db } from '../utils/supabase';
+import { useLessons } from '../hooks/useLessons';
 import { 
   Users, 
   UserPlus, 
-  Calendar, 
   TrendingUp, 
   DollarSign, 
-  Clock,
   Activity,
   Star,
   AlertCircle,
   CheckCircle,
   Target,
-  Award
+  Award,
+  Calendar,
+  ChevronRight,
+  Zap
 } from 'lucide-react';
+import LessonList from '../components/lesson-tracking/LessonList';
+import { DashboardSkeleton } from '../components/ui/Skeleton';
+import Alert from '../components/ui/Alert';
 
 const DashboardPage = () => {
   const { currentPT } = useAuth();
-  const [stats, setStats] = useState({
-    totalClients: 0,
-    activeClients: 0,
-    completedClients: 0,
-    totalRevenue: 0,
-    thisMonthRevenue: 0,
-    averageSessionPrice: 0,
-    upcomingEnds: []
-  });
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { 
+    clients, 
+    todaysLessons, 
+    stats: lessonStats,
+    loading: lessonsLoading 
+  } = useLessons();
 
-  // Supabase'den müşteri verilerini çek
-  const loadClientData = useCallback(async () => {
-    if (!currentPT?.id) return;
-
-    try {
-      setLoading(true);
-      
-      // Müşteri verilerini çek
-      const { data: clients, error } = await db.clients.getAll(currentPT.id);
-      
-      if (error) {
-        console.error('Error loading clients:', error);
-        return;
-      }
-
-      if (clients) {
-        calculateStats(clients);
-      }
-    } catch (error) {
-      console.error('Error in loadClientData:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPT?.id]);
-
-  // İstatistikleri hesapla
-  const calculateStats = (clients) => {
+  const clientStats = useMemo(() => {
+    const clientList = Object.values(clients);
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
-    // Temel istatistikler
-    const totalClients = clients.length;
-    const activeClients = clients.filter(client => {
+    const totalClients = clientList.length;
+    const activeClients = clientList.filter(client => {
       if (!client.tahmini_bitis_tarihi) return true;
       return new Date(client.tahmini_bitis_tarihi) > now;
     }).length;
-    const completedClients = totalClients - activeClients;
     
-    // Gelir hesaplamaları
-    const totalRevenue = clients.reduce((sum, client) => sum + (client.toplam_ucret || 0), 0);
-    const thisMonthClients = clients.filter(client => 
-      new Date(client.created_at) >= thisMonth
-    );
-    const thisMonthRevenue = thisMonthClients.reduce((sum, client) => sum + (client.toplam_ucret || 0), 0);
+    const totalRevenue = clientList.reduce((sum, client) => sum + (client.toplam_ucret || 0), 0);
+    const thisMonthRevenue = clientList
+      .filter(client => new Date(client.kayit_tarihi || client.created_at) >= thisMonth)
+      .reduce((sum, client) => sum + (client.toplam_ucret || 0), 0);
     
-    // Ortalama ders fiyatı
-    const averageSessionPrice = totalClients > 0 
-      ? clients.reduce((sum, client) => sum + (client.ders_basina_ucret || 0), 0) / totalClients 
-      : 0;
-    
-    // Yaklaşan bitiş tarihleri (30 gün içinde)
     const thirtyDaysLater = new Date();
     thirtyDaysLater.setDate(now.getDate() + 30);
     
-    const upcomingEnds = clients
+    const upcomingEnds = clientList
       .filter(client => {
         if (!client.tahmini_bitis_tarihi) return false;
         const endDate = new Date(client.tahmini_bitis_tarihi);
         return endDate > now && endDate <= thirtyDaysLater;
       })
       .sort((a, b) => new Date(a.tahmini_bitis_tarihi) - new Date(b.tahmini_bitis_tarihi))
-      .slice(0, 5);
+      .slice(0, 3);
 
-    setStats({
+    return {
       totalClients,
       activeClients,
-      completedClients,
       totalRevenue,
       thisMonthRevenue,
-      averageSessionPrice,
       upcomingEnds
-    });
-  };
-
-  // Component mount olduğunda veri yükle
-  useEffect(() => {
-    loadClientData();
-  }, [loadClientData]);
-
-  const quickActions = [
-    {
-      title: 'Yeni Müşteri Ekle',
-      description: 'Hızla yeni müşteri kaydı oluştur',
-      href: '/clients/new',
-      icon: UserPlus,
-      color: 'bg-blue-600 hover:bg-blue-700',
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600'
-    },
-    {
-      title: 'Müşteri Listesi',
-      description: 'Tüm müşterilerini görüntüle',
-      href: '/clients/list',
-      icon: Users,
-      color: 'bg-green-600 hover:bg-green-700',
-      iconBg: 'bg-green-100',
-      iconColor: 'text-green-600'
-    },
-    {
-      title: 'Profil Ayarları',
-      description: 'Profil bilgilerini güncelle',
-      href: '/profile',
-      icon: Award,
-      color: 'bg-purple-600 hover:bg-purple-700',
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600'
-    }
-  ];
+    };
+  }, [clients]);
 
   const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('tr-TR', {
@@ -148,255 +77,210 @@ const DashboardPage = () => {
     }).format(amount);
   }, []);
 
-  const formatDate = useCallback((dateString) => {
-    return new Date(dateString).toLocaleDateString('tr-TR', {
-      day: 'numeric',
-      month: 'short'
-    });
-  }, []);
-
-  const getDaysUntil = useCallback((dateString) => {
-    const targetDate = new Date(dateString);
-    const today = new Date();
-    const diffTime = targetDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  }, []);
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="bg-gray-200 animate-pulse rounded-2xl h-48"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-gray-200 animate-pulse rounded-xl h-24"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (lessonsLoading) return <DashboardSkeleton />;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">
-              Hoş geldin, {currentPT?.ad} {currentPT?.soyad}! 👋
+    <div className="max-w-7xl mx-auto space-y-8 p-0 lg:p-0 animate-fade-in">
+      
+      {/* 🚀 Elite Bento Hero Section */}
+      <div className="relative group overflow-hidden rounded-[2.5rem] bg-white p-8 lg:p-12 shadow-xl border border-slate-100 transition-all duration-500">
+        {/* Subtle Background Blobs */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-96 w-96 rounded-full bg-primary-100/30 blur-[100px]" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-emerald-100/20 blur-[80px]" />
+        
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-8 space-y-6 text-left">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-primary-50 border border-primary-100 text-primary-600 text-[10px] font-black uppercase tracking-widest">
+              <Zap className="h-3.5 w-3.5 fill-primary-600" />
+              <span>Elite Trainer Aktif</span>
+            </div>
+            <h1 className="text-4xl lg:text-6xl font-black text-slate-950 leading-tight">
+              Hoş geldin, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-emerald-600">{currentPT?.ad}</span>
             </h1>
-            <p className="text-primary-100 text-lg">
-              {stats.totalClients > 0 
-                ? `${stats.totalClients} müşterinle harika gidiyorsun! İşte PT istatistiklerin.`
-                : 'İlk müşterini eklemeye hazır mısın? Hemen başlayalım!'
-              }
+            <p className="text-slate-600 text-lg lg:text-xl max-w-2xl font-medium leading-relaxed">
+              Bugün performansını zirveye taşıma vakti. <span className="text-primary-600 font-bold">{todaysLessons.length} dersin</span> seni bekliyor.
             </p>
+            
+            <div className="flex flex-wrap gap-4 pt-2">
+              <button 
+                onClick={() => navigate('/clients/new')}
+                className="btn-magnetic btn-dark-bg btn-primary flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-slate-950/20 hover:scale-[1.03] active:scale-[0.97]"
+              >
+                <UserPlus className="h-5 w-5 text-indigo-200" />
+                <span>Yeni Üye Ekle</span>
+              </button>
+              <button 
+                onClick={() => navigate('/lessons')}
+                className="btn-magnetic btn-ghost flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm"
+              >
+                <Calendar className="h-5 w-5" />
+                <span>Programı Yönet</span>
+              </button>
+            </div>
           </div>
-          <div className="hidden lg:block">
-            <div className="w-32 h-32 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-              <Activity className="h-16 w-16 text-white" />
+
+          <div className="lg:col-span-4 hidden lg:flex justify-center">
+            <div className="relative group cursor-pointer hover:rotate-2 transition-transform duration-500">
+              <div className="absolute inset-0 bg-primary-500 rounded-[2.5rem] blur-3xl opacity-10 group-hover:opacity-20" />
+              <div className="relative glass-card !bg-white p-10 rounded-[2.5rem] border-slate-100 shadow-2xl">
+                <Activity className="h-24 w-24 text-primary-600" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover-lift animate-slide-up animate-stagger-1">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center hover-scale">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Toplam Müşteri</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalClients}</p>
-            </div>
+      {/* 🍱 THE BENTO GRID */}
+      <div className="bento-grid">
+        
+        {/* Main Stats Bento - Revenue */}
+        <div className="bento-col-8 glass-card rounded-[2.5rem] p-8 group hover-lift overflow-hidden relative">
+          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+            <TrendingUp className="h-32 w-32" />
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover-lift animate-slide-up animate-stagger-2">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center hover-scale">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Aktif Müşteri</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.activeClients}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover-lift animate-slide-up animate-stagger-3">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center hover-scale">
-                <DollarSign className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Toplam Gelir</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover-lift animate-slide-up animate-stagger-4">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center hover-scale">
-                <TrendingUp className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Bu Ay Gelir</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.thisMonthRevenue)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Quick Actions */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 card-animate">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Hızlı İşlemler</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {quickActions.map((action, index) => {
-                const Icon = action.icon;
-                return (
-                  <Link
-                    key={index}
-                    to={action.href}
-                    className="group p-6 border border-gray-200 rounded-xl hover:border-gray-300 hover-lift transition-all duration-200"
-                  >
-                    <div className="flex items-start space-x-4">
-                      <div className={`w-12 h-12 ${action.iconBg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
-                        <Icon className={`h-6 w-6 ${action.iconColor}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors duration-200">
-                          {action.title}
-                        </h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {action.description}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Additional Stats */}
-          <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6 card-animate">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Detaylı İstatistikler</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover-lift">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center hover-scale">
-                    <Target className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Ortalama Ders Fiyatı</p>
-                    <p className="text-xs text-gray-500">Tüm müşteriler</p>
-                  </div>
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-8">Finansal Özet</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-emerald-600">
+                <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <DollarSign className="h-5 w-5" />
                 </div>
-                <p className="text-lg font-bold text-indigo-600">
-                  {formatCurrency(stats.averageSessionPrice)}
-                </p>
+                <span className="text-[10px] font-black uppercase">Toplam Kazanç</span>
               </div>
-
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover-lift">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center hover-scale">
-                    <Clock className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Tamamlanan Müşteri</p>
-                    <p className="text-xs text-gray-500">Dersleri biten</p>
-                  </div>
-                </div>
-                <p className="text-lg font-bold text-red-600">
-                  {stats.completedClients}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Upcoming Ends & Recent Activity */}
-        <div className="space-y-6">
-          {/* Yaklaşan Bitiş Tarihleri */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <AlertCircle className="h-5 w-5 text-orange-500 mr-2" />
-              Yaklaşan Bitiş Tarihleri
-            </h3>
-            {stats.upcomingEnds.length > 0 ? (
-              <div className="space-y-3">
-                {stats.upcomingEnds.map((client, index) => {
-                  const daysLeft = getDaysUntil(client.tahmini_bitis_tarihi);
-                  return (
-                    <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {client.ad} {client.soyad}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatDate(client.tahmini_bitis_tarihi)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          daysLeft <= 7 
-                            ? 'bg-red-100 text-red-800' 
-                            : daysLeft <= 14 
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-orange-100 text-orange-800'
-                        }`}>
-                          {daysLeft} gün
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
-                {stats.totalClients === 0 ? 
-                  'Henüz müşteri yok. İlk müşterini ekle! 🚀' : 
-                  'Yaklaşan bitiş tarihi yok 🎉'
-                }
+              <p className="text-4xl lg:text-5xl font-black text-main tracking-tighter">
+                {formatCurrency(clientStats.totalRevenue)}
               </p>
-            )}
-          </div>
-
-          {/* Motivasyon kartı */}
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
-            <div className="flex items-center space-x-3 mb-3">
-              <Star className="h-6 w-6 text-green-200" />
-              <h3 className="text-lg font-semibold">
-                {stats.totalClients > 0 ? 'Harika Gidiyorsun! 💪' : 'Hadi Başlayalım! 🚀'}
-              </h3>
             </div>
-            <p className="text-green-100 text-sm leading-relaxed">
-              {stats.totalClients > 0 ? (
-                <>
-                  {stats.activeClients} aktif müşterin var ve {formatCurrency(stats.totalRevenue)} toplam gelir elde etmişsin. 
-                  Devam et! 🚀
-                </>
-              ) : (
-                'İlk müşterini ekleyerek YourTrainer yolculuğuna başla. Başarı seni bekliyor! 🌟'
-              )}
-            </p>
+            <div className="space-y-4 border-l border-slate-200 pl-0 md:pl-8">
+              <div className="flex items-center space-x-3 text-primary-600">
+                <div className="p-2 rounded-lg bg-primary-50">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-black uppercase text-slate-500">Bu Ay</span>
+              </div>
+              <p className="text-3xl lg:text-4xl font-black text-primary-700 tracking-tighter">
+                {formatCurrency(clientStats.thisMonthRevenue)}
+              </p>
+              <div className="flex items-center space-x-2 text-emerald-600 text-[10px] font-black uppercase tracking-widest bg-emerald-50 w-fit px-2 py-1 rounded-md">
+                <TrendingUp className="h-3 w-3" />
+                <span>+12% artış</span>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Member Stats Bento */}
+        <div className="bento-col-4 bg-white rounded-[2.5rem] p-8 group hover-lift relative overflow-hidden flex flex-col justify-between border border-slate-100 shadow-sm transition-all duration-300">
+          <div className="absolute bottom-0 right-0 -mb-8 -mr-8 opacity-5 text-primary-600">
+            <Users className="h-32 w-32" />
+          </div>
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">Müşteri Gücü</h3>
+          <div className="space-y-6 relative z-10">
+            <div>
+              <p className="text-5xl font-black tracking-tighter text-slate-950">{clientStats.activeClients}</p>
+              <p className="text-primary-600 font-black text-[10px] uppercase tracking-widest mt-1 bg-primary-50 w-fit px-2 py-0.5 rounded-md">Aktif Kursiyer</p>
+            </div>
+            <div className="pt-6 border-t border-slate-100">
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-2xl font-black text-slate-950">{clientStats.totalClients}</p>
+                  <p className="text-slate-400 text-[10px] uppercase tracking-widest font-black">Toplam Portföy</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-2xl">
+                  <Users className="h-6 w-6 text-slate-300" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Today's Schedule Bento */}
+        <div className="bento-col-8 bento-row-2">
+          <LessonList 
+            lessons={todaysLessons}
+            clients={clients}
+            title="Günlük Akış"
+            showProgress={true}
+            onLessonClick={(lesson) => navigate('/lessons', { state: { lessonId: lesson.id } })}
+            onViewAll={() => navigate('/lessons')}
+            variant="premium"
+          />
+        </div>
+
+        {/* Performance Bento */}
+        <div className="bento-col-4 glass-card rounded-[2.5rem] p-8 group hover-lift flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Verimlilik</h3>
+            <Award className="h-5 w-5 text-primary-500" />
+          </div>
+          <div className="space-y-8 flex-1 flex flex-col justify-center">
+            <div className="relative h-32 w-32 mx-auto">
+              <svg className="h-full w-full" viewBox="0 0 36 36">
+                <path
+                  className="stroke-slate-100 stroke-[3]"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                />
+                <path
+                  className="stroke-primary-500 stroke-[3] transition-all duration-1000 ease-out"
+                  strokeDasharray={`${lessonStats.completionRate || 0}, 100`}
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-black text-main">{lessonStats.completionRate || 0}%</span>
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Başarı</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-500 mb-1 uppercase tracking-tighter">TAMAMLANAN</p>
+                <p className="text-lg font-black text-main">{lessonStats.completed || 0}</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-500 mb-1 uppercase tracking-tighter">PLANLANAN</p>
+                <p className="text-lg font-black text-main">{lessonStats.planned || 0}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Membership Alerts Bento */}
+        <div className="bento-col-4 glass-card rounded-[2.5rem] p-8 border-orange-500/10 group hover-lift flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Kritik Takipler</h3>
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+            </div>
+            <div className="space-y-4">
+              {clientStats.upcomingEnds.length > 0 ? (
+                clientStats.upcomingEnds.map((client, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10 group/item hover:bg-orange-500/10 transition-colors">
+                    <div className="min-w-0">
+                      <p className="font-black text-main truncate text-sm">{client.ad} {client.soyad}</p>
+                      <p className="text-[9px] text-orange-600 font-bold uppercase tracking-widest mt-1">Bitiş Yaklaşıyor</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-orange-600/30 group-hover/item:translate-x-1 transition-transform" />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6">
+                  <Target className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-tight">Şu an kritik bildirim yok.</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate('/clients/list')}
+            className="btn-ghost w-full mt-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest"
+          >
+            Tüm Listeyi Gör
+          </button>
+        </div>
+
       </div>
     </div>
   );

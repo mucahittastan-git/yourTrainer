@@ -36,13 +36,6 @@ const useOfflineSync = () => {
     }
   }, [pendingActions]);
 
-  // Online olduğunda sync yap
-  useEffect(() => {
-    if (isOnline && wasOffline && pendingActions.length > 0) {
-      syncPendingActions();
-    }
-  }, [isOnline, wasOffline, pendingActions.length]);
-
   // Offline action ekle
   const addOfflineAction = useCallback((action) => {
     const newAction = {
@@ -60,6 +53,8 @@ const useOfflineSync = () => {
     return newAction.id;
   }, [toast]);
 
+
+
   // Pending actions'ı sync et
   const syncPendingActions = useCallback(async () => {
     if (!isOnline || pendingActions.length === 0 || isSyncing) {
@@ -76,9 +71,34 @@ const useOfflineSync = () => {
       const successfulActions = [];
       const failedActions = [];
 
+      const executeActionLocal = async (action) => {
+        switch (action.type) {
+          case 'CREATE_CLIENT':
+            return await syncCreateClient(action.data);
+          
+          case 'UPDATE_CLIENT':
+            return await syncUpdateClient(action.data);
+          
+          case 'DELETE_CLIENT':
+            return await syncDeleteClient(action.data);
+          
+          case 'CREATE_LESSON':
+            return await syncCreateLesson(action.data);
+          
+          case 'UPDATE_LESSON':
+            return await syncUpdateLesson(action.data);
+          
+          case 'UPDATE_PROFILE':
+            return await syncUpdateProfile(action.data);
+          
+          default:
+            throw new Error(`Unknown action type: ${action.type}`);
+        }
+      };
+
       for (const action of pendingActions) {
         try {
-          await executeAction(action);
+          await executeActionLocal(action);
           successfulActions.push(action);
         } catch (error) {
           console.error('Sync action failed:', action, error);
@@ -112,31 +132,12 @@ const useOfflineSync = () => {
     }
   }, [isOnline, pendingActions, isSyncing, toast]);
 
-  // Action'ı execute et
-  const executeAction = async (action) => {
-    switch (action.type) {
-      case 'CREATE_CLIENT':
-        return await syncCreateClient(action.data);
-      
-      case 'UPDATE_CLIENT':
-        return await syncUpdateClient(action.data);
-      
-      case 'DELETE_CLIENT':
-        return await syncDeleteClient(action.data);
-      
-      case 'CREATE_LESSON':
-        return await syncCreateLesson(action.data);
-      
-      case 'UPDATE_LESSON':
-        return await syncUpdateLesson(action.data);
-      
-      case 'UPDATE_PROFILE':
-        return await syncUpdateProfile(action.data);
-      
-      default:
-        throw new Error(`Unknown action type: ${action.type}`);
+  // Online'a dönünce otomatik sync — syncPendingActions'tan sonra tanımlı
+  useEffect(() => {
+    if (isOnline && wasOffline && pendingActions.length > 0) {
+      syncPendingActions();
     }
-  };
+  }, [isOnline, wasOffline, pendingActions.length, syncPendingActions]);
 
   // Sync fonksiyonları (şimdilik localStorage ile çalışıyor)
   const syncCreateClient = async (clientData) => {

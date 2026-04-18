@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/
+.vite/
+coverage/
+*.min.js
+*.bundle.js
+build/

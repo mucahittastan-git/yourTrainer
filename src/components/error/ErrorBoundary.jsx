@@ -1,156 +1,125 @@
 import React from 'react';
-import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
+import { RefreshCw, Home, Terminal, ChevronDown, ChevronUp } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { 
-      hasError: false, 
-      error: null, 
-      errorInfo: null 
-    };
-  }
+  state = { hasError: false, error: null, errorInfo: null, showDetails: false };
 
   static getDerivedStateFromError(error) {
-    // State'i güncelle böylece bir sonraki render'da fallback UI gösterilir
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Hata detaylarını state'e kaydet
-    this.setState({
-      error: error,
-      errorInfo: errorInfo
-    });
-
-    // Hata raporlama servisi burada çağrılabilir
-    console.error('ErrorBoundary yakaladı:', error, errorInfo);
+    this.setState({ errorInfo });
+    console.error('[ErrorBoundary]', error, errorInfo);
   }
 
-  handleReload = () => {
-    window.location.reload();
-  };
-
-  handleGoHome = () => {
-    window.location.href = '/clients/new';
-  };
-
-  handleToggleDetails = () => {
-    this.setState(prev => ({ 
-      showDetails: !prev.showDetails 
-    }));
-  };
-
   render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-          <div className="max-w-lg w-full">
-            {/* Ana Error Card */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-8 text-center">
-                <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle className="h-8 w-8 text-white" />
+    const { hasError, error, errorInfo, showDetails } = this.state;
+
+    if (!hasError) return this.props.children;
+
+    const isDev = import.meta.env.DEV || window.location.hostname === 'localhost';
+
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="w-full max-w-md space-y-4">
+
+          {/* Card */}
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
+
+            {/* Top stripe */}
+            <div className="h-1.5 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500" />
+
+            <div className="p-8 space-y-6">
+              {/* Icon + heading */}
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">Ups! Bir Sorun Oluştu</h1>
-                <p className="text-red-100">
-                  Beklenmeyen bir hata meydana geldi. Endişelenmeyin, verileriniz güvende.
-                </p>
+                <div>
+                  <h1 className="text-lg font-black text-slate-900 tracking-tight">Beklenmeyen Hata</h1>
+                  <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                    Bir şeyler ters gitti. Verileriniz güvende — sayfayı yenilemeniz yeterli.
+                  </p>
+                </div>
               </div>
 
-              {/* Content */}
-              <div className="p-6">
-                <div className="space-y-4">
-                  {/* Kullanıcı Dostu Açıklama */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-blue-900 mb-2">Ne Yapabilirsiniz?</h3>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• Sayfayı yenilemeyi deneyin</li>
-                      <li>• Anasayfaya geri dönün</li>
-                      <li>• Eğer sorun devam ederse, lütfen bizimle iletişime geçin</li>
-                    </ul>
+              {/* What to do */}
+              <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                {[
+                  'Sayfayı yenileyin — sorun genellikle geçicidir',
+                  'Sorun tekrarlarsa tarayıcı önbelleğini temizleyin',
+                  'Bu adımlar işe yaramazsa bize bildirin',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="mt-1 w-4 h-4 rounded-full bg-slate-200 text-slate-500 text-[10px] font-black flex items-center justify-center flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm text-slate-600">{item}</span>
                   </div>
+                ))}
+              </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      onClick={this.handleReload}
-                      className="flex-1 bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors duration-200 flex items-center justify-center space-x-2 font-medium"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      <span>Sayfayı Yenile</span>
-                    </button>
-                    
-                    <button
-                      onClick={this.handleGoHome}
-                      className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-200 flex items-center justify-center space-x-2 font-medium"
-                    >
-                      <Home className="h-4 w-4" />
-                      <span>Anasayfa</span>
-                    </button>
-                  </div>
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="btn-primary flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-black"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Yenile
+                </button>
+                <button
+                  onClick={() => { window.location.href = '/'; }}
+                  className="btn-ghost flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-black"
+                >
+                  <Home className="h-4 w-4" />
+                  Anasayfa
+                </button>
+              </div>
 
-                  {/* Teknik Detaylar (Geliştirme modunda) */}
-                  {(process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') && (
-                    <div className="border-t border-gray-200 pt-4">
-                      <button
-                        onClick={this.handleToggleDetails}
-                        className="text-sm text-gray-500 hover:text-gray-700 flex items-center space-x-1"
-                      >
-                        <Bug className="h-4 w-4" />
-                        <span>
-                          {this.state.showDetails ? 'Teknik Detayları Gizle' : 'Teknik Detayları Göster'}
-                        </span>
-                      </button>
-                      
-                      {this.state.showDetails && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded border text-xs font-mono">
-                          <div className="mb-2">
-                            <strong>Hata:</strong>
-                            <div className="text-red-600">{this.state.error && this.state.error.toString()}</div>
-                          </div>
-                          <div>
-                            <strong>Stack Trace:</strong>
-                            <pre className="mt-1 text-gray-600 overflow-x-auto whitespace-pre-wrap">
-                              {this.state.errorInfo.componentStack}
-                            </pre>
-                          </div>
+              {/* Dev details toggle */}
+              {isDev && (
+                <div className="border-t border-slate-100 pt-4">
+                  <button
+                    onClick={() => this.setState(s => ({ showDetails: !s.showDetails }))}
+                    className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors w-full"
+                  >
+                    <Terminal className="h-3.5 w-3.5" />
+                    <span className="font-mono">Teknik Detaylar</span>
+                    {showDetails
+                      ? <ChevronUp className="h-3.5 w-3.5 ml-auto" />
+                      : <ChevronDown className="h-3.5 w-3.5 ml-auto" />
+                    }
+                  </button>
+
+                  {showDetails && (
+                    <div className="mt-3 bg-slate-950 rounded-xl p-4 space-y-3 text-xs font-mono overflow-x-auto">
+                      {error && (
+                        <div>
+                          <span className="text-red-400 font-bold">{error.toString()}</span>
                         </div>
+                      )}
+                      {errorInfo?.componentStack && (
+                        <pre className="text-slate-400 whitespace-pre-wrap text-[11px] leading-relaxed">
+                          {errorInfo.componentStack.trim()}
+                        </pre>
                       )}
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* Footer */}
-              <div className="bg-gray-50 px-6 py-4 text-center">
-                <p className="text-xs text-gray-500">
-                  YourTrainer v1.2 • Bu hata otomatik olarak raporlandı
-                </p>
-              </div>
-            </div>
-
-            {/* Alt bilgi */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">
-                Sorun devam ederse{' '}
-                <a 
-                  href="mailto:support@yourtrainer.com" 
-                  className="text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  destek@yourtrainer.com
-                </a>
-                {' '}adresine yazabilirsiniz.
-              </p>
+              )}
             </div>
           </div>
-        </div>
-      );
-    }
 
-    // Hata yoksa normal içeriği render et
-    return this.props.children;
+          <p className="text-center text-xs text-slate-400">
+            YourTrainer · Hata otomatik kaydedildi
+          </p>
+        </div>
+      </div>
+    );
   }
 }
 

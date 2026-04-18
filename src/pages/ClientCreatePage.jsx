@@ -1,13 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../utils/AuthContext';
 import { useToast } from '../utils/ToastContext';
-import { UserPlus, ArrowLeft, ArrowRight, Check, Save, AlertTriangle } from 'lucide-react';
+import { UserPlus, ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
 import { useFormValidation } from '../hooks/useFormValidation';
 import Step1TemelBilgiler from '../components/client-form/Step1TemelBilgiler';
 import Step2VucutOlculeri from '../components/client-form/Step2VucutOlculeri';
 import Step3Onizleme from '../components/client-form/Step3Onizleme';
 import SuccessModal from '../components/SuccessModal';
-import { validateMusteriForm, saveToLocalStorage, getFromLocalStorage } from '../utils/helpers';
+import { saveToLocalStorage, getFromLocalStorage } from '../utils/helpers';
+import { syncClientToApi } from '../utils/api';
 
 const STEPS = [
   { 
@@ -45,7 +46,7 @@ const StepIndicator = ({ steps, currentStep, onStepClick }) => (
     
     {/* Steps */}
     <div className="relative flex justify-between">
-      {steps.map((step, index) => {
+      {steps.map((step) => {
         const isActive = currentStep === step.id;
         const isCompleted = currentStep > step.id;
         const isClickable = currentStep > step.id;
@@ -93,7 +94,7 @@ const StepIndicator = ({ steps, currentStep, onStepClick }) => (
   </div>
 );
 
-const ClientsPage = () => {
+const ClientCreatePage = () => {
   const { currentPT } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
@@ -283,12 +284,13 @@ const ClientsPage = () => {
       const mevcutMusteriler = getFromLocalStorage('musteriler', []);
       const yeniMusteri = {
         ...formData,
-        id: Date.now(), // Basit ID üretimi
+        id: String(Math.floor(100000 + Math.random() * 900000)), // 6 haneli kısa üye kodu (string)
         kayit_tarihi: new Date().toISOString()
       };
       
       mevcutMusteriler.push(yeniMusteri);
       saveToLocalStorage('musteriler', mevcutMusteriler);
+      await syncClientToApi(yeniMusteri, 'POST');
       
       // Başarılı müşteri bilgisini sakla
       setSavedCustomer(yeniMusteri);
@@ -379,17 +381,17 @@ const ClientsPage = () => {
         </div>
 
         {/* Form Actions */}
-        <div className="bg-gray-50 px-4 py-4 sm:px-6 lg:px-8 sm:py-6 flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 border-t border-gray-200">
+        <div className="bg-slate-50 px-4 py-4 sm:px-6 lg:px-8 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
           <button
             onClick={prevStep}
             disabled={currentStep === 1}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 btn-mobile"
+            className="btn-ghost w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4" />
             Geri
           </button>
 
-          <div className="text-sm text-gray-500 order-first sm:order-none">
+          <div className="text-xs text-slate-400 font-black uppercase tracking-widest order-first sm:order-none">
             Adım {currentStep} / {STEPS.length}
           </div>
 
@@ -397,25 +399,25 @@ const ClientsPage = () => {
             <button
               onClick={nextStep}
               disabled={!canProceedToStep(currentStep + 1)}
-              className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 btn-mobile"
+              className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black"
             >
               Devam Et
-              <ArrowRight className="h-4 w-4 ml-2" />
+              <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 btn-mobile"
+              className="btn-success w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   Kaydediliyor...
                 </>
               ) : (
                 <>
-                  <Check className="h-4 w-4 mr-2" />
+                  <Check className="h-4 w-4" />
                   Üyeliği Tamamla
                 </>
               )}
@@ -436,4 +438,4 @@ const ClientsPage = () => {
   );
 };
 
-export default ClientsPage;
+export default ClientCreatePage;
